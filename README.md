@@ -55,7 +55,7 @@ imprimível com proveniência: `policy#hash · seed · DI · DPD · AUC`).
 ## Pedagogia (Trilha de Aprendizado)
 Copiada e aprimorada da Trilha do produto **Vitaliza** (Módulo 2): **taxonomia de Bloom**,
 **scaffolding decrescente**, **check formativo predict-first** (quiz por estação, com feedback por
-opção, sem punição), **progresso** (`sessionStorage`), **modo tour**, **"aprofundar"** por estação, e o
+opção, sem punição), **progresso em sessão** (a Trilha de Aprendizado reinicia a cada carregamento), **modo tour**, **"aprofundar"** por estação, e o
 **capstone** (certificado `dataset_aprovado`). Painel direito "A trilha ensina · 4 movimentos":
 porquê+trade-off · caminho alternativo · conexão longitudinal (FIDC / motor trabalhista allla) ·
 pergunta provocativa.

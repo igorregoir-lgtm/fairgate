@@ -31,8 +31,10 @@
 
   // ── progresso (sessionStorage) ──────────────────────────────────────────
   function loadProgress() {
-    try { return new Set(JSON.parse(sessionStorage.getItem(PROG_KEY) || "[]")); }
-    catch (e) { return new Set(); }
+    // a Trilha de Aprendizado reinicia a cada carregamento do site —
+    // sem persistência de progresso entre reloads (limpa qualquer estado salvo).
+    try { sessionStorage.removeItem(PROG_KEY); } catch (e) {}
+    return new Set();
   }
   function saveProgress() {
     try { sessionStorage.setItem(PROG_KEY, JSON.stringify([...S.completed])); } catch (e) {}
