@@ -145,10 +145,17 @@
   }
   function ensureWelcome() { if (S.dock.messages.length === 0) S.dock.messages.push({ role: "assistant", content: DOCK_WELCOME }); }
   function scrollDock() { const b = root.querySelector(".fg-dock-msgs"); if (b) b.scrollTop = b.scrollHeight; }
+  let _welcomedVoice = false;
   function openDock(seedQ) {
-    S.dock.open = true; ensureWelcome(); render();
+    const wasClosed = !S.dock.open;
+    S.dock.open = true; ensureWelcome();
+    const fresh = S.dock.messages.length === 1 && S.dock.messages[0].role === "assistant";
+    const greet = wasClosed && fresh && !seedQ && !_welcomedVoice;   // 1ª abertura da sessão
+    if (greet) { _welcomedVoice = true; S.dock.speakOn = true; }     // abre já com voz
+    render();
     const inp = root.querySelector(".fg-dock-input"); if (inp) { if (seedQ) inp.value = seedQ; inp.focus(); }
     scrollDock();
+    if (greet) speak(DOCK_WELCOME);                                   // fala o welcome ao abrir
   }
   function closeDock() { stopSpeak(); stopMic(); S.dock.open = false; render(); }
   function toggleSpeak() { S.dock.speakOn = !S.dock.speakOn; if (!S.dock.speakOn) stopSpeak(); render(); }
@@ -964,7 +971,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="min-width:0;" role="status" aria-live="polite"><div class="fg-verdict-line">${verdictLine}</div><div class="fg-prov-line">${provLine}</div></div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <button class="fg-foot-tutor" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>Tutor</span></button>
+        <button class="fg-foot-tutor" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz"><span aria-hidden="true" style="font-size:15px; font-weight:700; line-height:1;">?</span><span>Tutor</span></button>
         <button class="fg-btn ${pMuted ? "muted" : ""}" data-act="primary" ${pMuted ? "disabled" : ""}>${pLabel}</button>
       </div>
     </footer>`;
