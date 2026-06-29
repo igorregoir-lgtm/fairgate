@@ -1201,10 +1201,10 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
     const hiHit = ans.filter((m) => calib[m.n].correct && calib[m.n].conf === "alta").length;
     const hiErr = ans.filter((m) => !calib[m.n].correct && calib[m.n].conf === "alta").length;
     const bloomMax = ans.filter((m) => calib[m.n].correct).reduce((mx, m) => ((RANK[m.bloom] || 0) > (RANK[mx] || 0) ? m.bloom : mx), "—");
-    return `<div class="fg-escalada" role="img" aria-label="A sua escalada de calibração nas 7 estações, de Entender a Criar: cobertura ${ans.length} de 7, ${hiHit} acerto(s) de alta confiança, ${hiErr} erro(s) de alta confiança corrigido(s) por hipercorreção, nível Bloom máximo com acerto ${bloomMax}.">
+    return `<div class="fg-escalada" role="img" aria-label="A sua escalada de calibração nas 7 estações, de Entender a Criar: cobertura ${ans.length} de 7, ${hiHit} acerto(s) de alta confiança, ${hiErr} erro(s) de alta confiança${hiErr ? " (alvos de hipercorreção)" : ""}, ${bloomMax === "—" ? "nenhum acerto registrado ainda" : "nível Bloom máximo com acerto " + bloomMax}.">
       <div class="mono fg-esc-eyebrow">A SUA ESCALADA · CALIBRAÇÃO × ACERTO (ENTENDER → CRIAR)</div>
       <div class="fg-esc-row" aria-hidden="true">${cells}</div>
-      <div class="mono fg-esc-prov">proveniência do aprendizado · cobertura <b>${ans.length}/7</b> · <b>${hiHit}</b> acerto(s) de alta confiança · <b>${hiErr}</b> erro(s) de alta confiança${hiErr ? ` <span style="color:#B96F36;">★ corrigido(s)</span>` : ""} · Bloom máx <b>${bloomMax}</b></div>
+      <div class="mono fg-esc-prov">proveniência do aprendizado · cobertura <b>${ans.length}/7</b> · <b>${hiHit}</b> acerto(s) de alta confiança · <b>${hiErr}</b> erro(s) de alta confiança${hiErr ? ` <span style="color:#B96F36;">★ alvo(s) de hipercorreção</span>` : ""} · Bloom máx <b>${bloomMax}</b></div>
       ${hiErr ? `<div class="fg-esc-legend">★ erro de alta confiança = onde a hipercorreção mais fixa o aprendizado (Butterfield &amp; Metcalfe, 2001)</div>` : ""}
     </div>`;
   }
@@ -1290,7 +1290,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
       ? `<div class="fg-msg user"><div class="fg-bub">${fmt(mm.content)}</div></div>`
       : `<div class="fg-msg bot"><div class="fg-bub">${fmt(mm.content)}</div><button class="fg-msg-listen" data-act="speakMsg" data-i="${i}" title="Ouvir" aria-label="Ouvir esta resposta"><svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M11 5 6 9H2v6h4l5 4Z'/><path d='M15.5 8.5a5 5 0 0 1 0 7'/><path d='M19 5a9 9 0 0 1 0 14'/></svg></button></div>`).join("");
     const sugg = d.messages.length <= 1
-      ? `<div class="fg-dock-sugg">${DOCK_SUGGEST.map((s) => `<button class="fg-chip-sugg" data-act="dockSuggest" data-q="${esc(s).replace(/"/g, "&quot;")}">${esc(s)}</button>`).join("")}</div>` : "";
+      ? `<div class="fg-dock-sugg">${DOCK_SUGGEST.map((s) => `<button class="fg-chip-sugg" data-act="dockSuggest" data-q="${esc(s)}">${esc(s)}</button>`).join("")}</div>` : "";
     const micOn = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
     const statusTx = d.playing ? "falando…" : (d.ttsLoading ? "sintetizando voz…" : "ensina — nunca altera o veredito (P3)");
     return `<section class="fg-dock" role="dialog" aria-label="Tutor do fairgate">
