@@ -181,8 +181,9 @@
   }
 
   // ── prova de consolidação (gate de APRENDIZADO — espelho do gate de DADOS) ──
-  // Retrieval cumulativo (Dunlosky et al., 2013): só emite aprendizado_consolidado
-  // com 7/7 estações dominadas. Gate honesto: não se declara verde sem reexecução.
+  // Retrieval cumulativo (Dunlosky et al., 2013): as questões da prova entrelaçam (interleaving) o
+  // conteúdo das 7 estações; só emite aprendizado_consolidado com TODAS corretas (CONSOLIDATION.total/total).
+  // Gate honesto: não se declara verde sem reexecução.
   function openConsol() { S.consol = { i: 0, picked: null, conf: null, results: [], done: false, passed: false }; render(); }
   function consolPick(i) { if (S.consol && S.consol.picked === null) { S.consol.picked = i; render(); } }
   function consolConf(level) { if (S.consol && S.consol.picked !== null && S.consol.conf === null) { S.consol.conf = level; render(); } }
