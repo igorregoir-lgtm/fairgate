@@ -217,3 +217,25 @@ ser analogia e vira **mesma estrutura visual**: o passo que separa um artefato q
 *produz*. Invariante-seguro: sessão-only (zera no reload), CSP-estrito (sem inline), **P3** (só leitura no render —
 provado por teste-slice em `tests/trilha.test.mjs`). Não há gamificação (anti-template): a escalada **revela**
 coerência, não premia.
+
+## ADR-018 — "Modo estudo": persistência local opt-in + revisão espaçada (reversão escopada do session-only)
+**Contexto.** O estado de aprendizado era **session-only** de propósito (demo-honesto; ADR-011/014). Isso bloqueava
+o lever de **maior** utilidade comprovada — a **prática espaçada** (Dunlosky 2013) — que só rende com retorno
+multi-dia. Desenho + **revisão adversarial de 3 lentes** em `docs/specs/modo-estudo-persistencia.md`.
+**Decisão.** Adicionar um **"modo estudo" opt-in** que **coexiste** com a demo. **Local-first, anônimo, offline**:
+`localStorage` (chave `fairgate:estudo:v1`, canal **separado** do `PROG_KEY`/sessionStorage), **zero PII no servidor**.
+Lógica pura e testável isolada em `study.js` (`window.FAIRGATE_STUDY`: `schedule`/`computeDue`/`validateSave`/
+`freshSave`). Revisão espaçada **Leitner enxuto** (3 caixas, intervalos `[0,2,7]` dias); erro → caixa 1, acerto
+confiante sobe. `schedule(card,outcome,now)` e `computeDue(save,now)` são **puras** (now injetado — testáveis,
+defensivas a relógio retrocedido/saltado: base=`max(now,updatedAt)` + cap de vencidos por sessão).
+**Consequência (invariantes virados contrato testável).** (a) **Demo-honesto à prova de código:** `loadProgress`
+intocado; sem opt-in o boot é byte-a-byte o atual; guard único `persistStudy()` é **no-op** sem `enabled` (nada
+grava). (b) **Gate honesto (o achado central da revisão):** restaurar progresso **NUNCA** semeia `S.completed`
+para destravar a prova nem pinta `S.learnCert` verde — `S.learnCert` começa `false` e só vira `true` com **prova
+viva** na sessão; "já consolidou antes" é **nota neutra** (`jaConsolidouAntes`). Paridade com `dataset_aprovado`
+(`[[criterio-de-pronto-e-gate-de-submissao]]`). (c) **Offline-first + determinismo + P3** preservados; o motor e o
+veredito M/M não mudam. (d) **Boundary hostil:** `validateSave` sanitiza input não-confiável do `localStorage`
+(corrupção/versão-futura ⇒ caminho demo, sem apagar); probe de disponibilidade ⇒ toggle desabilitado honesto se o
+navegador bloqueia memória local. Coberto por `tests/study.test.mjs` (8 testes) + o teste-slice de gate honesto.
+**Fase 2 (diferida):** recall **generativo** (não a MC fixa) — a revisão notou que re-mostrar a mesma múltipla
+escolha é reconhecimento, não recall; gatilho de graduação registrado no spec.

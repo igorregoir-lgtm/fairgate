@@ -350,6 +350,16 @@ button { font-family: var(--fg-font-mono); }
 .fg-consol-cta:hover { transform: translateY(-1px); background: linear-gradient(135deg, rgba(15, 148, 134, .2), rgba(20, 184, 166, .28)); box-shadow: 0 10px 22px -14px rgba(20, 184, 166, .8); }
 .fg-consol-cta.done { background: rgba(20, 184, 166, .1); border-color: rgba(20, 184, 166, .35); color: #0F9486; }
 
+/* ── modo estudo (persistência local opt-in) ─────────────────────────────── */
+.fg-study-toggle { display: block; width: 100%; margin-top: 9px; text-align: left; padding: 7px 9px; border-radius: 7px; border: 1px dashed rgba(14, 31, 48, .18); background: transparent; color: var(--fg-steel); font-family: var(--fg-font-mono); font-size: 9px; letter-spacing: .04em; cursor: pointer; transition: border-color .15s, color .15s; }
+.fg-study-toggle:hover { border-color: rgba(20, 184, 166, .5); color: var(--fg-teal-deep); }
+.fg-study-na { font-size: 8.5px; color: #8A9AAB; margin-top: 9px; letter-spacing: .03em; }
+.fg-study-on { margin-top: 9px; padding: 8px 9px; border-radius: 7px; border: 1px solid rgba(20, 184, 166, .28); background: rgba(20, 184, 166, .05); }
+.fg-study-due { display: block; width: 100%; text-align: left; margin-top: 6px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(20, 184, 166, .5); background: rgba(20, 184, 166, .12); color: #0B5F56; font-family: var(--fg-font-mono); font-size: 9px; font-weight: 600; letter-spacing: .03em; cursor: pointer; }
+.fg-study-due:hover { background: rgba(20, 184, 166, .2); }
+.fg-study-forget { display: block; margin-top: 7px; padding: 0; border: none; background: none; color: #8A9AAB; font-family: var(--fg-font-mono); font-size: 8px; letter-spacing: .03em; cursor: pointer; text-decoration: underline; }
+.fg-study-forget:hover { color: #E0726B; }
+
 /* ── carta de auto-explicação (produção · pós-gate, formativa) ───────────── */
 .fg-explain { margin-top: 16px; padding: 13px 14px; border: 1px dashed rgba(20, 184, 166, .4); border-radius: 10px; background: rgba(20, 184, 166, .04); }
 .fg-explain-input { display: block; width: 100%; margin-top: 9px; box-sizing: border-box; resize: vertical; min-height: 64px; background: #FFFFFF; border: 1px solid var(--fg-ink-line); border-radius: 8px; padding: 10px 12px; color: var(--fg-text); font-family: var(--fg-font-body); font-size: 13px; line-height: 1.45; }

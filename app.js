@@ -21,7 +21,7 @@
     ready: false, step: 1, maxStep: 4,
     gate: "idle", imputed: false, reweighed: false, verdict: null,
     lambdaIdx: 0,
-    completed: loadProgress(), check: null, picked: null, conf: null, calib: {}, consol: null, learnCert: false, tour: false, defShown: true,
+    completed: loadProgress(), check: null, picked: null, conf: null, calib: {}, consol: null, learnCert: false, study: null, tour: false, defShown: true,
     dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false, socratic: null },
   };
   // áudio/voz fora do estado de render (persistem entre re-renders)
@@ -41,6 +41,35 @@
   }
   function markComplete(n) { S.completed.add(n); saveProgress(); }
 
+  // ── modo estudo (persistência local OPT-IN + revisão espaçada · study.js) ──
+  // Canal SEPARADO do progresso de sessão: localStorage (não sessionStorage). loadProgress acima é intocado.
+  const STUDY = (typeof window !== "undefined" && window.FAIRGATE_STUDY) || null;
+  let _studyInit = false;
+  function studyAvailable() { try { const k = "__fg_probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; } catch (e) { return false; } }
+  function loadStudy() { if (!STUDY) return null; try { return STUDY.validateSave(JSON.parse(localStorage.getItem(STUDY.STUDY_KEY) || "null")); } catch (e) { return null; } }
+  function writeStudy() { if (!STUDY || !S.study) return; try { localStorage.setItem(STUDY.STUDY_KEY, JSON.stringify(S.study)); } catch (e) {} }
+  // GUARD ÚNICO de escrita: nada é gravado sem opt-in (enabled). Em modo demo é no-op total (demo-honesto).
+  function persistStudy() {
+    if (!S.study || !S.study.enabled) return;
+    S.study.completed = [...S.completed];
+    const cal = {}; for (const n in S.calib) cal[n] = { correct: !!S.calib[n].correct, conf: S.calib[n].conf || "media" };
+    S.study.calib = cal;
+    S.study.updatedAt = Date.now();
+    writeStudy();
+  }
+  // restaura SÓ a Escalada (calib) — NUNCA semeia S.completed nem pinta S.learnCert (gate honesto: prova viva).
+  function initStudy() {
+    if (_studyInit) return; _studyInit = true;
+    const sv = loadStudy();
+    if (!sv || !sv.enabled) return;
+    S.study = sv;
+    for (const n in sv.calib) if (!S.calib[n]) S.calib[n] = sv.calib[n];
+  }
+  function enableStudy() { if (!STUDY || !studyAvailable()) return; S.study = STUDY.freshSave(S.calib, [...S.completed], Date.now()); writeStudy(); render(); }
+  function forgetStudy() { if (STUDY) { try { localStorage.removeItem(STUDY.STUDY_KEY); } catch (e) {} } S.study = null; render(); }
+  function studyDue() { return (STUDY && S.study && S.study.enabled) ? STUDY.computeDue(S.study, Date.now()) : []; }
+  function reviewDue() { const d = studyDue(); if (d.length) openCheck(d[0]); }
+
   // ── helpers de formatação ────────────────────────────────────────────────
   const pct = (x) => (x * 100).toFixed(1) + "%";
   const pp = (x) => (x * 100).toFixed(1);
@@ -51,6 +80,7 @@
 
   // ── boot ─────────────────────────────────────────────────────────────────
   function boot() {
+    initStudy();                   // modo estudo: restaura a Escalada (1x), antes do 1º render. Não toca o gate.
     const base = E.loadPolicy();   // fonte única: policy.yaml -> window.FAIRGATE_POLICY
     P = Object.assign({}, base, {
       fairness: Object.assign({}, base.fairness, { disparate_impact_min: S.diThreshold }),
@@ -138,6 +168,11 @@
     const correctIdx = m ? m.check.options.findIndex((o) => o.correct) : -1;
     S.calib[n] = { correct: S.picked === correctIdx, conf: S.conf || "media" };
     markComplete(n);
+    if (STUDY && S.study && S.study.enabled) {        // modo estudo: reagenda o card (Leitner) — formativo, não toca o gate
+      const prev = S.study.cards[String(n)] || { box: 1 };
+      S.study.cards[String(n)] = STUDY.schedule(prev, { correct: S.calib[n].correct, conf: S.calib[n].conf }, Date.now());
+      persistStudy();
+    }
     S.check = null; S.picked = null; S.conf = null;
     if (advance && S.tour) { const nx = n + 1; if (nx <= S.maxStep) S.step = nx; }
     render();
@@ -206,7 +241,7 @@
     const correctIdx = q.options.findIndex((o) => o.correct);
     c.results.push({ id: q.id, correct: c.picked === correctIdx, conf: c.conf });
     if (c.i + 1 < C.total) { c.i++; c.picked = null; c.conf = null; }
-    else { c.done = true; c.passed = c.results.every((r) => r.correct); if (c.passed) S.learnCert = true; }
+    else { c.done = true; c.passed = c.results.every((r) => r.correct); if (c.passed) { S.learnCert = true; if (STUDY && S.study && S.study.enabled) { S.study.jaConsolidouAntes = true; persistStudy(); } } }
     render();
   }
   function closeConsol() { S.consol = null; render(); const t = root.querySelector('[data-act="openConsol"]'); if (t) t.focus(); }
@@ -455,6 +490,9 @@
       case "dockSend": { const ta = root.querySelector(".fg-dock-input"); sendDock(ta ? ta.value : ""); break; }
       case "dockSuggest": sendDock(el.getAttribute("data-q") || ""); break;
       case "socratic": socraticStation(n); break;
+      case "studyOn": enableStudy(); break;
+      case "studyForget": forgetStudy(); break;
+      case "reviewDue": reviewDue(); break;
       case "revealModel": { const ta = root.querySelector(".fg-explain-input"); if (S.consol) { S.consol.explainText = ta ? ta.value : ""; S.consol.explainRevealed = true; } render(); break; }
       case "reactExplain": reactToExplanation(); break;
       case "toggleSpeak": toggleSpeak(); break;
@@ -569,6 +607,22 @@
   }
 
   // ── left rail (a trilha) ──────────────────────────────────────────────────
+  // controle do modo estudo (rail) — opt-in, local no dispositivo. Toggle + revisar vencidas + esquecer.
+  function studyBlock() {
+    if (!STUDY) return "";
+    const on = !!(S.study && S.study.enabled);
+    if (!on) {
+      if (!studyAvailable()) return `<div class="mono fg-study-na" title="Seu navegador bloqueia memória local (modo privado?)">modo estudo indisponível neste navegador</div>`;
+      return `<button class="fg-study-toggle" data-act="studyOn" title="Lembrar seu progresso só neste aparelho — offline, sem login">○ ativar modo estudo</button>`;
+    }
+    const due = studyDue();
+    return `<div class="fg-study-on">
+      <div class="mono" style="font-size:8.5px; color:#0F9486; letter-spacing:.06em;">● MODO ESTUDO · lembrado neste aparelho</div>
+      ${due.length ? `<button class="fg-study-due" data-act="reviewDue">↻ revisar ${due.length} estação(ões) vencida(s)</button>` : ``}
+      ${S.study.jaConsolidouAntes ? `<div class="mono" style="font-size:8px; color:#5B7691; margin-top:5px; line-height:1.4;">você já consolidou antes — refaça a prova para reemitir</div>` : ``}
+      <button class="fg-study-forget" data-act="studyForget" title="Apagar seu progresso deste aparelho">esquecer meu progresso</button>
+    </div>`;
+  }
   function railLeft() {
     const progressW = Math.round((S.maxStep / 7) * 100) + "%";
     const rows = T.STATIONS.map((m) => {
@@ -599,6 +653,7 @@
           <div class="mono" style="font-size:10px; color:#0F9486; letter-spacing:.04em;">${S.maxStep}/7</div>
         </div>
         <div class="mono" style="font-size:9px; color:#5B7691; margin-top:8px; letter-spacing:.04em;">checks <span style="color:#0F9486; font-weight:600;">✓ ${S.completed.size}/7</span>${S.learnCert ? ` · aprendizado <span style="color:#0F9486; font-weight:600;">✓ consolidado</span>` : ""}</div>
+        ${studyBlock()}
         <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour" aria-label="${S.tour ? "Continuar a trilha de aprendizado guiada" : "Iniciar a trilha de aprendizado guiada"}">
           <span class="fg-tour-ic">${S.tour
             ? "<svg width='17' height='17' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6' fill='currentColor'/></svg>"
