@@ -138,7 +138,7 @@
     return "O fairgate mede qualidade e justiça na ingestão e BLOQUEIA o dataset enviesado antes do treino. Pergunte sobre as 3 métricas de DQ, as 2 mitigações (imputação estratificada, Kamiran–Calders), o contrato Pandera, o gate ou o trade-off acurácia × justiça.";
   }
   // ── dock conversacional + voz (porte do tutor do Vitaliza) ──
-  const DOCK_WELCOME = "Oi! Sou o tutor do fairgate, aqui pra explicar tudo em palavras simples. A ideia do sistema é simples: antes de uma inteligência artificial aprender a decidir quem recebe crédito, a gente confere se os dados tratam todo mundo de forma justa — e barra os dados se houver sinal de injustiça. Pode perguntar qualquer coisa, do seu jeito, por texto ou por voz, ou tocar em \"explicar esta fase\".";
+  const DOCK_WELCOME = "Oi! Sou o tutor do fairgate. Antes de um modelo de IA aprender a decidir quem recebe crédito, este sistema audita se os dados tratam os diferentes grupos de pessoas de forma equânime (sem viés por idade, sexo etc.) — e bloqueia a base quando detecta injustiça, em vez de apenas sinalizar. Pode me perguntar qualquer coisa, por texto ou por voz, ou tocar em \"explicar esta fase\".";
   const DOCK_SUGGEST = ["O que esta fase mostra?", "Por que o gate bloqueia se o DI já passa cru?", "Por que SMOTE foi preterido?"];
 
   function setDock(patch) {
@@ -396,7 +396,7 @@
     if (!S.defShown) return "";
     return `<section class="fg-defbanner" aria-label="O que é o fairgate">
       <span class="fg-defbanner-ic" aria-hidden="true"><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='4.6'/><circle cx='12' cy='12' r='1.1' fill='currentColor' stroke='none'/></svg></span>
-      <p class="fg-defbanner-tx"><b>O que é o fairgate?</b> Antes de uma <b>inteligência artificial</b> aprender a decidir quem recebe <b>crédito</b>, ele confere se os <b>dados são justos com todos os grupos de pessoas</b> (sem favorecer nem prejudicar por <b>idade</b>, <b>sexo</b> etc.) e <b>bloqueia os dados injustos</b> em vez de só avisar.</p>
+      <p class="fg-defbanner-tx"><b>O que é o fairgate?</b> Antes de um <b>modelo de IA</b> aprender a decidir quem recebe <b>crédito</b>, ele audita se os <b>dados são justos</b> com todos os grupos de pessoas — ou seja, sem <b>viés</b> que favoreça ou prejudique por <b>idade</b>, <b>sexo</b> etc. — e <b>bloqueia a base</b> quando detecta injustiça, em vez de apenas sinalizar.</p>
       <button class="fg-defbanner-close" data-act="closeDef" aria-label="Fechar a definição" title="Fechar">×</button>
     </section>`;
   }
@@ -412,7 +412,7 @@
           <div style="line-height:1;"><div class="fg-brand-name">fairgate</div><div class="mono fg-brand-tag">intelligence applied</div></div>
         </div>
         <div class="fg-divider-v"></div>
-        <div class="mono fg-subtitle">Console do Operador<span style="color:#8A9AAB;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>barra dados de crédito injustos antes de a IA aprender</div>
+        <div class="mono fg-subtitle">Console do Operador<span style="color:#8A9AAB;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>audita e bloqueia dados de crédito enviesados antes do treino do modelo</div>
       </div>
       <div class="fg-top-right">
         <div class="fg-seg" role="group" aria-label="Fonte de dados">
