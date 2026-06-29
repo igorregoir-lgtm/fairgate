@@ -85,22 +85,34 @@ button { font-family: var(--fg-font-mono); }
   border-top-color: var(--fg-teal-deep); border-radius: 50%; animation: fgSpin .8s linear infinite;
 }
 
-/* ── top bar ───────────────────────────────────────────────────────────── */
+/* ── top bar (dark navy · estilo header institucional) ──────────────────── */
 .fg-top {
   position: relative; z-index: 3;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 14px; padding: 13px 26px;
-  border-bottom: 1px solid var(--fg-ink-line);
-  background: rgba(244, 246, 248, .8); backdrop-filter: blur(14px);
+  display: flex; align-items: center;
+  gap: 16px; padding: 11px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+  background: linear-gradient(180deg, #15293E, #0E1F30);
   flex-shrink: 0; flex-wrap: nowrap;
 }
-.fg-top-left { display: flex; align-items: center; gap: 18px; min-width: 0; flex-shrink: 1; }
-.fg-brand { display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-.fg-brand-name { font-family: var(--fg-font-display); font-weight: 400; font-size: 23px; letter-spacing: -.01em; line-height: 1; }
-.fg-brand-tag { font-size: 8.5px; letter-spacing: .34em; color: var(--fg-steel-deep); margin-top: 3px; text-transform: uppercase; }
-.fg-divider-v { width: 1px; height: 30px; background: var(--fg-ink-line); flex-shrink: 0; }
-.fg-subtitle { font-size: 11px; letter-spacing: .06em; color: var(--fg-steel); line-height: 1.5; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fg-top-left { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+.fg-brand-badge { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0F9486, #16C2AE); flex-shrink: 0; box-shadow: 0 7px 18px -8px rgba(20, 184, 166, .75); }
+.fg-brand-badge svg { display: block; }
+.fg-brand-name { font-family: var(--fg-font-display); font-weight: 400; font-size: 22px; letter-spacing: -.01em; line-height: 1; color: #fff; }
+.fg-brand-tag { font-size: 8px; letter-spacing: .3em; color: rgba(255, 255, 255, .4); margin-top: 4px; text-transform: uppercase; }
+/* título do sistema — centralizado, serif */
+.fg-top-title { flex: 1; min-width: 0; text-align: center; margin: 0; padding: 0 12px; font-family: var(--fg-font-display); font-weight: 300; font-size: clamp(13px, 1.3vw, 16px); letter-spacing: -.012em; color: rgba(255, 255, 255, .96); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fg-top-right { display: flex; align-items: center; gap: 9px; flex-shrink: 0; flex-wrap: nowrap; }
+/* controles reestilizados p/ o header escuro (escopados — não afetam o resto) */
+.fg-top .fg-chip { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .13); color: rgba(255, 255, 255, .62); }
+.fg-top .fg-chip b { color: rgba(255, 255, 255, .9); }
+.fg-top .fg-chip .k { color: rgba(255, 255, 255, .42); }
+.fg-top .fg-chip.live { color: var(--fg-teal); border-color: rgba(20, 184, 166, .42); background: rgba(20, 184, 166, .07); }
+.fg-top .fg-seg { border-color: rgba(255, 255, 255, .14); }
+.fg-top .fg-seg button { background: rgba(255, 255, 255, .05); color: rgba(255, 255, 255, .55); }
+.fg-top .fg-seg button + button { border-left-color: rgba(255, 255, 255, .12); }
+.fg-top .fg-seg button.on { background: rgba(20, 184, 166, .24); color: #54DCC8; box-shadow: inset 0 -2px 0 var(--fg-teal); }
+.fg-top .fg-btn-ghost { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .13); color: rgba(255, 255, 255, .62); }
+.fg-top .fg-btn-ghost:hover { color: var(--fg-teal); border-color: rgba(20, 184, 166, .5); }
 
 /* ── banner de definição (plain language) ───────────────────────────────── */
 .fg-defbanner { position: relative; z-index: 3; flex-shrink: 0; padding: 14px 64px; text-align: center; background: rgba(20, 184, 166, .055); border-bottom: 1px solid rgba(20, 184, 166, .15); }
