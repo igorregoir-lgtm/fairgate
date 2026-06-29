@@ -297,7 +297,7 @@ button { font-family: var(--fg-font-mono); }
 .fg-check-fb { font-size: 12.5px; line-height: 1.5; color: var(--fg-text-soft); margin-top: 8px; font-weight: 300; }
 
 /* ── tutor dock (rodapé, abrível a qualquer momento) ─────────────────────── */
-.fg-fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; align-items: center; gap: 9px; padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(20,184,166,.45); background: linear-gradient(135deg, #0F9486, #14B8A6); color: #06231f; font-family: var(--fg-font-mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; cursor: pointer; box-shadow: 0 14px 34px -12px rgba(20,184,166,.7); transition: transform .15s, box-shadow .2s; }
+.fg-fab { position: fixed; right: 20px; bottom: 90px; z-index: 60; display: flex; align-items: center; gap: 9px; padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(20,184,166,.45); background: linear-gradient(135deg, #0F9486, #14B8A6); color: #06231f; font-family: var(--fg-font-mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; cursor: pointer; box-shadow: 0 14px 34px -12px rgba(20,184,166,.7); transition: transform .15s, box-shadow .2s; }
 .fg-fab:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -12px rgba(20,184,166,.85); }
 .fg-fab-ic { font-size: 18px; }
 .fg-dock { position: fixed; right: 20px; bottom: 20px; z-index: 60; width: 380px; max-width: calc(100vw - 32px); height: 540px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: linear-gradient(170deg, #102739, #0A1622); border: 1px solid rgba(20,184,166,.3); border-radius: 16px; box-shadow: 0 40px 90px -28px rgba(0,0,0,.75); overflow: hidden; animation: fgSlam .35s var(--fg-ease); }
@@ -330,7 +330,7 @@ button { font-family: var(--fg-font-mono); }
 .fg-dock-send.muted { background: rgba(255,255,255,.1); color: var(--fg-steel); cursor: default; }
 @keyframes fgTyping { 0%,60%,100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .fg-dock, .fg-typing span, .fg-dock-btn.mic.on { animation: none; } }
-@media (max-width: 520px) { .fg-dock { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); } .fg-fab { right: 12px; bottom: 12px; } }
+@media (max-width: 520px) { .fg-dock { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); } .fg-fab { right: 12px; bottom: 84px; } }
 
 /* ── capstone (printable certificate) ──────────────────────────────────── */
 .fg-cert {
