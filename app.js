@@ -396,7 +396,7 @@
     if (!S.defShown) return "";
     return `<section class="fg-defbanner" aria-label="O que é o fairgate">
       <span class="fg-defbanner-ic" aria-hidden="true"><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='4.6'/><circle cx='12' cy='12' r='1.1' fill='currentColor' stroke='none'/></svg></span>
-      <p class="fg-defbanner-tx"><b>O que é o fairgate?</b> Antes de um <b>modelo de IA</b> aprender a decidir quem recebe <b>crédito</b>, ele audita se os <b>dados são justos</b> com todos os grupos de pessoas — ou seja, sem <b>viés</b> que favoreça ou prejudique por <b>idade</b>, <b>sexo</b> etc. — e <b>bloqueia a base</b> quando detecta injustiça, em vez de apenas sinalizar.</p>
+      <p class="fg-defbanner-tx"><b>O que é o fairgate?</b> Antes de um <b>modelo de IA</b> aprender a decidir quem recebe <b>crédito</b>, ele audita se os <b>dados são justos</b> com todos os grupos de pessoas — sem <b>viés</b> por <b>idade</b>, <b>sexo</b> etc. — e <b>bloqueia a base</b> quando detecta injustiça, em vez de apenas sinalizar.</p>
       <button class="fg-defbanner-close" data-act="closeDef" aria-label="Fechar a definição" title="Fechar">×</button>
     </section>`;
   }

@@ -103,12 +103,12 @@ button { font-family: var(--fg-font-mono); }
 .fg-top-right { display: flex; align-items: center; gap: 9px; flex-shrink: 0; flex-wrap: nowrap; }
 
 /* ── banner de definição (plain language) ───────────────────────────────── */
-.fg-defbanner { position: relative; z-index: 3; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 10px 26px; background: rgba(20, 184, 166, .07); border-bottom: 1px solid rgba(20, 184, 166, .2); }
-.fg-defbanner-ic { flex-shrink: 0; color: var(--fg-teal-deep); display: flex; }
+.fg-defbanner { position: relative; z-index: 3; flex-shrink: 0; padding: 14px 64px; text-align: center; background: rgba(20, 184, 166, .055); border-bottom: 1px solid rgba(20, 184, 166, .15); }
+.fg-defbanner-ic { position: absolute; left: 28px; top: 50%; transform: translateY(-50%); color: var(--fg-teal-deep); display: flex; }
 .fg-defbanner-ic svg { display: block; }
-.fg-defbanner-tx { font-family: var(--fg-font-body); font-size: 12.5px; line-height: 1.5; color: var(--fg-paper-body); font-weight: 300; margin: 0; max-width: 1180px; }
+.fg-defbanner-tx { font-family: var(--fg-font-body); font-size: 13px; line-height: 1.6; color: var(--fg-paper-body); font-weight: 300; margin: 0 auto; max-width: 960px; }
 .fg-defbanner-tx b { color: var(--fg-paper-ink); font-weight: 500; }
-.fg-defbanner-close { margin-left: auto; flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--fg-ink-line); background: transparent; color: var(--fg-steel); font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color .15s, border-color .15s; }
+.fg-defbanner-close { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--fg-ink-line); background: transparent; color: var(--fg-steel); font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color .15s, border-color .15s; }
 .fg-defbanner-close:hover { border-color: var(--fg-teal); color: var(--fg-teal-deep); }
 .fg-chip {
   font-size: 10px; letter-spacing: .05em; color: var(--fg-steel);
