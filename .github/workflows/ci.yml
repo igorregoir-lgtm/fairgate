@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - uses: actions/setup-python@v5
         with:
@@ -36,7 +36,7 @@ jobs:
         run: node scripts/check.mjs
 
       - name: Testes (node --test) — motor + invariantes do gate + API (hermético)
-        run: node --test "tests/**/*.test.mjs"
+        run: node --test
 
       - name: Gerar o golden do motor JS vivo (L1)
         run: node notebook/js_golden.mjs
