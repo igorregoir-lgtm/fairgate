@@ -5,7 +5,7 @@ e a mesma policy.yaml. Sem dependências. Rode:  python notebook/crosscheck.py
 Mesma matemática do motor JS: featurização padronizada, LogReg por gradiente (init=0, lr=0.32,
 l2=0.004, 280 iters), split por índice (i%4==0=teste), Kamiran-Calders, imputação estratificada.
 """
-import csv, json, math, os, sys
+import csv, json, math, os, re, sys
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -29,9 +29,12 @@ def sigmoid(z):
 # ---- policy.yaml (parser mínimo, mesmo subconjunto do build-policy.mjs) ----
 def load_policy(path):
     pol, cur = {}, None
-    for raw in open(path, encoding="utf-8"):
-        line = raw.rstrip("\n")
-        line = line.split(" #")[0] if " #" in line else (("" if line.lstrip().startswith("#") else line))
+    with open(path, encoding="utf-8") as _f:
+        lines = _f.read().split("\n")
+    for raw in lines:
+        # mesma estratégia do build-policy.mjs: tira comentário inline e linha-comentário
+        line = re.sub(r"\s+#.*$", "", raw)
+        line = re.sub(r"^#.*$", "", line)
         if line.strip() == "":
             continue
         indent = len(line) - len(line.lstrip())
@@ -96,6 +99,7 @@ def featurize(rows, use_flags):
     for k in ("duration", "credit_amount", "job"):
         xs = [r[k] for r in rows]
         m = sum(xs) / len(xs)
+        # variância POPULACIONAL (/n) — idêntica ao motor JS; difere do StandardScaler do sklearn (/n-1)
         v = sum((x - m) ** 2 for x in xs) / len(xs)
         mean[k] = m; std[k] = math.sqrt(v) or 1.0
     X, y = [], []
@@ -320,7 +324,8 @@ def main():
     if not os.path.exists(gpath):
         print("\n[aviso] .golden.json ausente — rode `node notebook/js_golden.mjs` primeiro.")
         sys.exit(2)
-    g = json.load(open(gpath, encoding="utf-8"))
+    with open(gpath, encoding="utf-8") as _gf:
+        g = json.load(_gf)
 
     def cmp(label, py, js, tol):
         ok = abs(py - js) <= tol
@@ -332,7 +337,8 @@ def main():
     ok &= (len(rows) == g["n"]); print(f"  [{'OK ' if len(rows)==g['n'] else 'XX '}] N == {g['n']}")
     ok &= (st_raw == g["raw"]["gate"]); print(f"  [{'OK ' if st_raw==g['raw']['gate'] else 'XX '}] gate cru == {g['raw']['gate']}")
     ok &= (st_mit == g["mit"]["gate"]); print(f"  [{'OK ' if st_mit==g['mit']['gate'] else 'XX '}] gate mitigado == {g['mit']['gate']}")
-    ok &= (min_pass == g["min_pass_lambda"]); print(f"  [{'OK ' if min_pass==g['min_pass_lambda'] else 'XX '}] minPassLambda == {g['min_pass_lambda']}")
+    _mpok = abs((min_pass or 0) - g["min_pass_lambda"]) < 1e-9
+    ok &= _mpok; print(f"  [{'OK ' if _mpok else 'XX '}] minPassLambda == {g['min_pass_lambda']}")
     # métricas determinísticas de dado: igualdade quase-exata
     ok &= cmp("cobertura jovem (cru)", m_raw["completude"]["covYoung"], g["raw"]["cov_young"], 1e-9)
     ok &= cmp("violacao NA (cru)", m_raw["consistencia"]["value"], g["raw"]["dom_na"], 1e-9)

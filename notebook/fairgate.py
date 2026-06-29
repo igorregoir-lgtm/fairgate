@@ -171,9 +171,9 @@ def _(mo):
 @app.cell
 def _(cc, DF):
     try:
-        import pandera.pandas as pa
-    except Exception:
-        import pandera as pa
+        import pandera.pandas as pa  # pandera >= 0.20
+    except ImportError:
+        import pandera as pa  # fallback p/ versões antigas
 
     contract = pa.DataFrameSchema(
         {
@@ -361,7 +361,8 @@ def _(cc, ROWS, POL, os, json, pd):
     _gp = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".golden.json")
     _rows = []
     if os.path.exists(_gp):
-        _g = json.load(open(_gp, encoding="utf-8"))
+        with open(_gp, encoding="utf-8") as _gf:
+            _g = json.load(_gf)
         _mr, _pr = cc.metrics(ROWS, POL, None), cc.probe(ROWS, None, False)
         _imp = cc.impute_stratified(ROWS)
         _mp = None

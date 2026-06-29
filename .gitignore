@@ -4,6 +4,7 @@
 node_modules/
 __pycache__/
 *.pyc
+**/__marimo__/
 
 # referência (não faz parte do entregável)
 _handoff_ref/

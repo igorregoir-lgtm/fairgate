@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plano de Melhoria de Data Quality — German Credit · fairgate</title>
+  <link rel="stylesheet" href="../styles/tokens/fonts.css">
+  <link rel="stylesheet" href="slides.css">
+</head>
+<body>
+<div class="deck">
+
+  <!-- ══════════ SLIDE 01 — MÉTRICAS DE DQ (25%) ══════════ -->
+  <section class="slide" id="s1">
+    <div class="s-eyebrow"><span>MÉTRICAS DE DATA QUALITY&nbsp;&nbsp;·&nbsp;&nbsp;PESO 25%&nbsp;&nbsp;·&nbsp;&nbsp;01 / 03</span><span class="live">ARTEFATO AO VIVO → <b>fairgate-eight.vercel.app</b></span></div>
+    <h1 class="s-title">Três métricas que ligam <em>qualidade</em> a justiça</h1>
+    <p class="s-intro">No German Credit o viés não é defeito do modelo — é defeito de dado que se propaga. Cada métrica tem <b>limite operacional</b> (em <span class="mono">policy.yaml</span>, fonte única) e conexão direta com acurácia e justiça. Números medidos sobre as <b>1.000 linhas reais</b>.</p>
+    <div class="s-body">
+      <div class="card">
+        <div class="card-num">01</div>
+        <div class="card-h">Completude representacional</div>
+        <div class="tag">MEDE</div>
+        <div class="val">Cobertura de cada subgrupo protegido. Aqui: feminino <b>31%</b>, jovem&lt;25 <b>14,9%</b>; contas Saving/Checking com <span class="mono">not_known</span> (NA) em <b>28,8%</b> das células.</div>
+        <div class="limit"><div class="tag" style="color:var(--teal-deep)">LIMITE · policy.yaml</div><div class="val">cobertura ≥ <b>30%</b> por subgrupo protegido (P5).</div></div>
+        <div class="tag">CONEXÃO</div>
+        <div class="val">Sub-representação → o modelo subajusta a minoria → erro e injustiça concentrados nela. É <b>causa</b>, não sintoma.</div>
+      </div>
+      <div class="card">
+        <div class="card-num">02</div>
+        <div class="card-h">Consistência / validade de domínio</div>
+        <div class="tag">MEDE</div>
+        <div class="val">% de valores no domínio válido; zero categorias fora do dicionário. O <span class="mono">not_known</span> é NA explícito, <b>não categoria</b>.</div>
+        <div class="limit"><div class="tag" style="color:var(--teal-deep)">LIMITE · policy.yaml</div><div class="val">violação de domínio ≤ <b>5%</b>; 0 categorias não documentadas.</div></div>
+        <div class="tag">CONEXÃO</div>
+        <div class="val">Código inválido vira proxy espúrio que o modelo correlaciona ao grupo → discriminação por artefato de dado.</div>
+      </div>
+      <div class="card hi">
+        <div class="card-num">03 <span class="hi-flag">↑ eleva à banda excepcional</span></div>
+        <div class="card-h">Precisão + equidade de qualidade</div>
+        <div class="tag">MEDE</div>
+        <div class="val">Gap da taxa-base "bad" entre grupos: jovem&lt;25 <b>40,9%</b> vs ≥25 <b>28,1%</b> = <b>12,8 p.p.</b> + disparate impact da sonda.</div>
+        <div class="limit"><div class="tag" style="color:var(--teal-deep)">LIMITE · policy.yaml</div><div class="val">gap de taxa-base ≤ <b>10 p.p.</b> · DI ≥ <b>0,80</b> (regra dos 80%).</div></div>
+        <div class="tag">CONEXÃO</div>
+        <div class="val">Rótulo histórico diferencial = viés na origem. A minoria com taxa pior ensina o modelo que ela é mais arriscada — invisível à acurácia agregada.</div>
+      </div>
+    </div>
+    <div class="s-foot"><span class="mono">PLANO DE MELHORIA DE DATA QUALITY · GERMAN CREDIT (STATLOG)</span><span class="mono">01 / 03</span></div>
+  </section>
+
+  <!-- ══════════ SLIDE 02 — MITIGAÇÃO (30%) ══════════ -->
+  <section class="slide" id="s2">
+    <div class="s-eyebrow"><span>AÇÕES DE ENGENHARIA DE DADOS&nbsp;&nbsp;·&nbsp;&nbsp;PESO 30%&nbsp;&nbsp;·&nbsp;&nbsp;02 / 03</span><span class="live">2 ações na <b>raiz do dataset</b></span></div>
+    <h1 class="s-title">Duas ações — e o <em>trade-off</em> de cada uma</h1>
+    <p class="s-intro">Mitigar viés é escolher onde pagar o custo: toda correção de dado move a fronteira <b>acurácia × justiça</b>. As ações abaixo são concretas, ordenadas por prioridade e nomeiam o que se perde.</p>
+    <div class="s-body">
+      <div class="card action">
+        <div class="action-head"><span class="action-tag">AÇÃO 01</span><span class="card-h">Reponderação estratégica antes de reamostragem bruta</span></div>
+        <div class="grid2">
+          <div class="field"><div class="k">O QUE</div><div class="v">Pesos por instância para equalizar P(bom\|grupo) entre privilegiado e protegido — em vez de duplicar ou sintetizar linhas.</div></div>
+          <div class="field"><div class="k">COMO</div><div class="v">Pesos <b>Kamiran–Calders</b> por célula (grupo × rótulo); treinar com <span class="mono">sample_weight</span>. SMOTE avaliado e preterido.</div></div>
+          <div class="field"><div class="k">TRADE-OFF</div><div class="v warn">Reamostragem bruta infla a minoria com pontos sintéticos → ruído e queda de AUC. Reweighing preserva o dado real e desloca a fronteira: fairness ↑, AUC ↓ medível (no fairgate, gap 12,8 → ≤10 p.p. ao custo de ~0,003 de AUC).</div></div>
+          <div class="field"><div class="k">QUANDO</div><div class="v">Dado escasso e real (1.000 linhas): preservar amostra real &gt; fabricar sintético.</div></div>
+        </div>
+      </div>
+      <div class="card action">
+        <div class="action-head"><span class="action-tag">AÇÃO 02</span><span class="card-h">Imputação estratificada por grupo (+ expansão de fontes)</span></div>
+        <div class="grid2">
+          <div class="field"><div class="k">O QUE</div><div class="v">Ao imputar o NA de conta, condicionar ao subgrupo — nunca a moda global; buscar fontes adicionais (expansão) como meta.</div></div>
+          <div class="field"><div class="k">COMO</div><div class="v">Imputação condicional por (sexo, faixa etária); flag <span class="mono">missingness-as-signal</span> vira feature.</div></div>
+          <div class="field"><div class="k">TRADE-OFF</div><div class="v warn">A moda global é barata mas enviesa contra a minoria (a moda é puxada pela maioria e apaga a estrutura do subgrupo). Estratificada preserva a estrutura mas reduz amostra por célula. Expansão é o ideal — custa tempo e consentimento (LGPD).</div></div>
+          <div class="field"><div class="k">QUANDO</div><div class="v">NA não aleatório (MNAR) correlacionado ao grupo — exatamente o caso do <span class="mono">not_known</span> em conta.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="order"><b>A ORDEM IMPORTA:</b> corrigir a representação (Ação 02) <b>antes</b> de reponderar (Ação 01) evita reponderar sobre dado já enviesado na origem.</div>
+    <div class="s-foot"><span class="mono">PLANO DE MELHORIA DE DATA QUALITY · GERMAN CREDIT (STATLOG)</span><span class="mono">02 / 03</span></div>
+  </section>
+
+  <!-- ══════════ SLIDE 03 — DATA VALIDATION (30%) ══════════ -->
+  <section class="slide" id="s3">
+    <div class="s-eyebrow"><span>DATA VALIDATION&nbsp;&nbsp;·&nbsp;&nbsp;DATAOPS&nbsp;&nbsp;·&nbsp;&nbsp;PESO 30%&nbsp;&nbsp;·&nbsp;&nbsp;03 / 03</span><span class="live">testes <b>antes</b> do treino</span></div>
+    <h1 class="s-title">Um <em>gate</em> que bloqueia, não um relatório que sugere</h1>
+    <p class="s-intro">A validação não é revisão manual — é um <b>data contract executável</b> (Pandera) que reprova a ingestão e bloqueia o treino quando a cobertura ou a paridade cruza um limite versionado. Justiça vira invariante de pipeline, verificada <b>ex-ante</b>.</p>
+    <div class="gate-flow">
+      <div class="gate-box io"><div class="mono" style="font-size:9px;letter-spacing:.12em;color:var(--steel-deep)">FONTE</div><div style="font-size:14px;margin-top:6px;color:#fff">dados de crédito</div><div style="font-size:11px;color:var(--steel-deep);margin-top:5px">na ingestão</div></div>
+      <div class="gate-arrow">→</div>
+      <div class="gate-box gate-core">
+        <div class="mono" style="font-size:10px;letter-spacing:.14em;color:var(--teal)">GATE DE VALIDAÇÃO</div>
+        <div style="display:flex;gap:9px;margin-top:11px">
+          <div class="gate-layer" style="flex:1"><div class="mono" style="font-size:9px;color:var(--steel)">DETERMINÍSTICO</div><div style="font-size:11.5px;color:var(--text-soft);margin-top:3px">schema · domínio · completude · anomalia</div></div>
+          <div class="gate-layer" style="flex:1;background:rgba(20,184,166,.1);border-color:rgba(20,184,166,.34)"><div class="mono" style="font-size:9px;color:var(--teal-bright)">FAIRNESS</div><div style="font-size:11.5px;color:var(--text);margin-top:3px">cobertura de subgrupo · disparate impact · paridade</div></div>
+        </div>
+      </div>
+      <div class="gate-arrow">→</div>
+      <div class="verdict">
+        <div class="v-pass"><div class="mono" style="font-size:11px;font-weight:600;color:var(--teal-bright)">PASS</div><div style="font-size:11.5px;color:var(--text-soft);margin-top:2px">treino liberado · <span class="mono">dataset_aprovado</span></div></div>
+        <div class="v-fail"><div class="mono" style="font-size:11px;font-weight:600;color:var(--red)">FAIL</div><div style="font-size:11.5px;color:var(--text-soft);margin-top:2px">bloqueio + alerta · quarentena</div></div>
+      </div>
+    </div>
+    <div class="note-row">
+      <div class="note"><div class="k">ESCOLHA NORMATIVA</div><div class="v">Paridade demográfica e calibração são matematicamente incompatíveis — o gate escolhe uma. A escolha é configurável e pertence a <b>Risco/Jurídico</b>: o artefato força a decisão a ser explícita.</div></div>
+      <div class="note"><div class="k">ALERTAS &amp; GATES</div><div class="v">Dois níveis: <b>warning</b> (registra, segue) e <b>blocker</b> (reprova e interrompe). O gate roda no CI como <b>PR-blocker</b> — nada chega ao treino sem passar.</div></div>
+      <div class="note"><div class="k">PAPÉIS (RACI)</div><div class="v">Data Engineer constrói as checagens · Data Steward define thresholds · <b>Risco/Jurídico</b> define o limite de fairness · ML Engineer consome só dado aprovado.</div></div>
+    </div>
+    <div class="s-foot"><span class="mono">VEJA O GATE REPROVAR E APROVAR AO VIVO →</span><a class="s-live" href="https://fairgate-eight.vercel.app" target="_blank" rel="noopener">fairgate-eight.vercel.app</a></div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button onclick="window.print()">⎙ Imprimir / PDF (3 páginas)</button>
+  <a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a>
+  <a href="https://fairgate-eight.vercel.app" target="_blank" rel="noopener">▶ artefato</a>
+</div>
+</body>
+</html>

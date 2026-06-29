@@ -13,9 +13,10 @@ createServer(async (req, res) => {
   try {
     let p = decodeURIComponent(req.url.split("?")[0]);
     if (p === "/" || p === "") p = "/index.html";
-    const fp = normalize(join(ROOT, p));
+    let fp = normalize(join(ROOT, p));
     if (!fp.startsWith(ROOT)) { res.writeHead(403).end("forbidden"); return; }
-    const st = await stat(fp).catch(() => null);
+    let st = await stat(fp).catch(() => null);
+    if (st && st.isDirectory()) { fp = join(fp, "index.html"); st = await stat(fp).catch(() => null); } // index de diretório
     if (!st || st.isDirectory()) { res.writeHead(404).end("not found"); return; }
     const buf = await readFile(fp);
     res.writeHead(200, { "Content-Type": TYPES[extname(fp).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });

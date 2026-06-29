@@ -294,8 +294,6 @@ window.FairgateEngine = (function () {
       return (Pg[gkey(r)] * Py[ykey(r)]) / (n * Pgy[k]);
     });
   }
-  function blendWeights(wkc, lambda) { return wkc.map((w) => 1 + lambda * (w - 1)); }
-
   function mitigationWeights(rows, targetCoverage) {
     const target = targetCoverage || 0.31;
     const wkc = reweighWeights(rows);
@@ -426,8 +424,10 @@ window.FairgateEngine = (function () {
   };
 
   return {
-    loadReal, loadPolicy, makeDataset, dataset, metrics, probe, runGate, gateChecks, reweighWeights, blendWeights,
+    loadReal, loadPolicy, makeDataset, dataset, metrics, probe, runGate, gateChecks, reweighWeights,
     mitigationWeights, coverageWeights, sweepWeights, imputeStratified, tradeoff, hash, DEFAULT_POLICY,
+    // nota: loadPolicy faz merge ALLOWLIST sobre DEFAULT_POLICY (version/protected_attributes/quality/
+    // fairness/probe_model). Chaves novas no policy.yaml fora dessa lista são ignoradas de propósito.
     SAVING, CHECK, HOUSING, PURPOSE,
   };
 })();

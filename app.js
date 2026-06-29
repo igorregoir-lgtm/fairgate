@@ -880,6 +880,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
   function tutorModal() {
     const t = S.tutor; const m = T.get(t.station);
     const srcBadge = t.source === "llm" ? "🤖 DeepSeek (ao vivo)" : t.source === "fallback" ? "⚙️ determinístico (servidor)" : "⚙️ determinístico (offline)";
+    // SEGURANÇA: esc() (escapa & e <) DEVE rodar antes da substituição \n→<br>. Não reordenar.
     const esc = (x) => (x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
     return `<div class="fg-modal-veil">
       <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-tutor-title" tabindex="-1">

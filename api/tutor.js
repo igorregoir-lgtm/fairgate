@@ -29,11 +29,31 @@ function readBody(req) {
       if (typeof req.body === "string") { try { return resolve(JSON.parse(req.body)); } catch { return resolve({}); } }
       return resolve(req.body);
     }
-    let data = "";
-    req.on("data", (c) => (data += c));
+    let data = "", bytes = 0;
+    req.on("data", (c) => { bytes += c.length; if (bytes > 65536) { try { req.destroy(); } catch (e) {} return resolve({}); } data += c; });
     req.on("end", () => { try { resolve(JSON.parse(data || "{}")); } catch { resolve({}); } });
     req.on("error", () => resolve({}));
   });
+}
+
+// classificador opaco — não vaza status/erro interno do upstream (H1)
+function classifyError(e) {
+  const m = String((e && e.message) || e || "");
+  if (/abort|signal|timeout/i.test(m)) return "timeout";
+  if (/upstream 4/.test(m)) return "upstream_client_error";
+  if (/upstream 5/.test(m)) return "upstream_server_error";
+  if (m === "sem conteúdo") return "empty_response";
+  return "internal_error";
+}
+
+// rate-limit best-effort por IP (por instância quente) — defende contra loop trivial (H2)
+const _rl = new Map();
+function rateLimited(ip) {
+  const now = Date.now(), win = 60000, max = 15;
+  const arr = (_rl.get(ip) || []).filter((t) => now - t < win);
+  arr.push(now); _rl.set(ip, arr);
+  if (_rl.size > 5000) _rl.clear();
+  return arr.length > max;
 }
 
 function deterministicFallback(question, station) {
@@ -61,12 +81,19 @@ function deterministicFallback(question, station) {
 module.exports = async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   if (req.method !== "POST") { res.statusCode = 405; return res.end(JSON.stringify({ error: "use POST" })); }
+  const ct = (req.headers["content-type"] || "").split(";")[0].trim();
+  if (ct && ct !== "application/json") { res.statusCode = 415; return res.end(JSON.stringify({ error: "Content-Type deve ser application/json" })); }
+  const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "anon";
+  if (rateLimited(ip)) { res.statusCode = 429; return res.end(JSON.stringify({ error: "muitas requisições — tente em instantes" })); }
 
   const body = await readBody(req);
   const question = String(body.question || "").slice(0, 1200);
-  const station = body.station ? String(body.station).slice(0, 80) : "";
+  // strip de colchetes/chaves p/ reduzir superfície de prompt-injection estrutural (P3 já é enforced em Python)
+  const station = body.station ? String(body.station).slice(0, 80).replace(/[\[\]{}]/g, "") : "";
   if (!question.trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: "pergunta vazia" })); }
 
+  if (process.env.DEEPSEEK_API_KEY && process.env.OPENROUTER_API_KEY)
+    console.warn("[tutor] DEEPSEEK_API_KEY e OPENROUTER_API_KEY setadas; usando DEEPSEEK_API_KEY.");
   // sanitiza: remove BOM/espaços/quebras que possam ter entrado no valor da env var
   const rawKey = process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY;
   const key = rawKey ? rawKey.replace(/[^\x21-\x7E]/g, "") : rawKey;
@@ -104,8 +131,8 @@ module.exports = async (req, res) => {
     res.statusCode = 200;
     return res.end(JSON.stringify({ answer: answer.trim(), source: "llm" }));
   } catch (e) {
-    // CAMADA 2 — fallback determinístico no servidor (nunca 500)
+    // CAMADA 2 — fallback determinístico no servidor (nunca 500). reason opaco (não vaza upstream).
     res.statusCode = 200;
-    return res.end(JSON.stringify({ answer: deterministicFallback(question, station), source: "fallback", reason: String(e.message || e) }));
+    return res.end(JSON.stringify({ answer: deterministicFallback(question, station), source: "fallback", reason: classifyError(e) }));
   }
 };
