@@ -162,3 +162,38 @@ verde sem reexecução** (invariante 4) — errar bloqueia e oferece refazer. Co
 estrutural que produz o efeito allla. CSP estrito preservado (fluxo por delegação `data-act`, zero handler inline).
 Estado de aprendizado é de **sessão** (a Trilha reinicia a cada carga, `[[offline-local-first]]`), sem persistência
 entre reloads. Custo: +1 fase no check (mais cliques) — aceito pelo ganho de fixação que a calibração entrega.
+
+## ADR-015 — Trilha como solução de Bloom (maestria + tutor 1:1) + auto-explicação e modo socrático
+**Contexto.** Pesquisa ampliada (não só Feynman) sobre ciência da aprendizagem **com IA como multiplicador em
+escala** (`docs/analysis/feynman-trilha.md` §6). A síntese: o fairgate **já encarna as DUAS metades da solução
+2-sigma de Bloom** — um **gate de maestria** (`aprendizado_consolidado`, mastery learning d≈0,67) **+** um
+**tutor 1:1 de IA** (o dock; ITS ≈ tutor humano, VanLehn 2011 d≈0,76 vs 0,79; Kulik & Fletcher +0,66 SD; RCT de
+tutor de IA Kestin et al. 2024, *Nature Sci. Reports*) — mas o tutor era usado só em **modo consumo** (responde/
+explica), não como multiplicador. Lacunas reais confirmadas no código: o aluno só **reconhece** (nunca produz) e
+o tutor nunca **pergunta**.
+**Decisão.** Três levers, priorizados por painel adversarial (5 levers + cético + síntese, conf. 0,86), todos
+**invariante-seguros**: (A) **carta de auto-explicação** opcional pós-gate 7/7 (textarea → `revealModel` →
+resposta-modelo **estática** em `missions.js` p/ autocomparação; auto-explicação, Bisra et al. 2018 g≈0,55); (B)
+**modo socrático** que ativa as sementes `SOCRATIC` (o tutor **pergunta** e dá **pista**, online via `mode:"socratic"`,
+offline via `follow` autorado — tutoria dialógica, AutoTutor; lição de design do RCT de Kestin); (C) **enquadramento
+estrutural** (esta ADR + uma linha no certificado) nomeando a dupla maestria+tutor.
+**Consequência.** O artefato passa a **usar o tutor que já tem** como o multiplicador que a evidência associa aos
+maiores ganhos. Reivindicamos a **estrutura**, **nunca a magnitude**: o número +2σ de Bloom 1984 é citado só como
+**origem aspiracional**, com a ressalva de **não-replicação** (RCTs de campo ~0,3–0,4σ — `[[conflito-de-fonte-explicito]]`
+aplicado à evidência pedagógica). A fronteira de honestidade está em **ADR-016**.
+
+## ADR-016 — Fronteira de honestidade pedagógica (auto-explicação e socrático são formativos, nunca gate)
+**Contexto.** Os levers A/B de **ADR-015** envolvem **texto livre do aluno** e o **tutor de IA**. A pressão previsível
+(de PM, de produto) é "deixa o tutor **corrigir/pontuar** a explicação". Ceder a isso quebraria três invariantes de
+uma vez — offline-first, determinismo e o **P3** (o tutor nunca toca o veredito) — e fabricaria um *verde falso*, a
+falha-reverso que `[[criterio-de-pronto-e-gate-de-submissao]]` (ADR-013) proíbe.
+**Decisão.** Codificar a fronteira: (a) a auto-explicação é **reflexão não-medida** — sem nota, sem correção; só
+autocomparação com texto **autorado estático**; (b) o socrático/reação é **formativo-only** e **nunca** muta
+`c.results` / `S.learnCert` / nenhum artefato emitido (P3 reafirmado para o caminho de ensino — provado por teste em
+`tests/trilha.test.mjs`); (c) texto livre do aluno **jamais** é avaliado por máquina nem alimenta o gate; (d) o
+comportamento **offline degrada para texto autorado** (`SOCRATIC.follow` / `CONSOLIDATION.modelAnswer`), nunca
+raciocínio simulado pela tabela de 7 regex; (e) **proibido** copy de **+2σ / ganho medido / "IA que se adapta a você"**
+(sem instrumento de medição e com estado de sessão, qualquer claim de efeito é inverificável).
+**Consequência.** A defesa escrita contra a deriva "deixa o tutor corrigir". O texto livre do aluno é **escapado**
+antes de ir ao DOM (XSS). O gate de aprendizado continua sendo **só os 7/7** determinísticos com proveniência; a
+produção e o diálogo socrático são **momento de aprendizado**, não artefato — coerentes com `[[offline-local-first]]`.

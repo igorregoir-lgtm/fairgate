@@ -350,6 +350,18 @@ button { font-family: var(--fg-font-mono); }
 .fg-consol-cta:hover { transform: translateY(-1px); background: linear-gradient(135deg, rgba(15, 148, 134, .2), rgba(20, 184, 166, .28)); box-shadow: 0 10px 22px -14px rgba(20, 184, 166, .8); }
 .fg-consol-cta.done { background: rgba(20, 184, 166, .1); border-color: rgba(20, 184, 166, .35); color: #0F9486; }
 
+/* ── carta de auto-explicação (produção · pós-gate, formativa) ───────────── */
+.fg-explain { margin-top: 16px; padding: 13px 14px; border: 1px dashed rgba(20, 184, 166, .4); border-radius: 10px; background: rgba(20, 184, 166, .04); }
+.fg-explain-input { display: block; width: 100%; margin-top: 9px; box-sizing: border-box; resize: vertical; min-height: 64px; background: #FFFFFF; border: 1px solid var(--fg-ink-line); border-radius: 8px; padding: 10px 12px; color: var(--fg-text); font-family: var(--fg-font-body); font-size: 13px; line-height: 1.45; }
+.fg-explain-input:focus { outline: none; border-color: rgba(20, 184, 166, .6); box-shadow: 0 0 0 3px rgba(20, 184, 166, .14); }
+.fg-explain-mine { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: rgba(45, 70, 99, .05); border: 1px solid rgba(45, 70, 99, .14); }
+.fg-explain-model { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: rgba(20, 184, 166, .08); border: 1px solid rgba(20, 184, 166, .28); }
+
+/* ── CTA socrático (tutoria dialógica · o tutor pergunta) ─────────────────── */
+.fg-socratic-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; border-radius: 999px; border: 1px solid rgba(20, 184, 166, .45); background: rgba(20, 184, 166, .06); color: #0B5F56; font-family: var(--fg-font-mono); font-size: 12px; font-weight: 600; letter-spacing: .04em; cursor: pointer; transition: transform .15s, background .2s, box-shadow .2s; }
+.fg-socratic-cta:hover { transform: translateY(-1px); background: rgba(20, 184, 166, .13); box-shadow: 0 8px 20px -12px rgba(20, 184, 166, .6); }
+.fg-socratic-cta svg { display: block; }
+
 /* ── tutor dock (rodapé, abrível a qualquer momento) ─────────────────────── */
 .fg-foot-tutor { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 9px 15px; border-radius: 999px; border: 1px solid rgba(20,184,166,.45); background: linear-gradient(135deg, #0F9486, #14B8A6); color: #06231f; font-family: var(--fg-font-mono); font-size: 12px; font-weight: 600; letter-spacing: .04em; cursor: pointer; box-shadow: 0 8px 20px -12px rgba(20,184,166,.6); transition: transform .15s, box-shadow .2s; }
 .fg-foot-tutor:hover { transform: translateY(-1px); box-shadow: 0 12px 26px -12px rgba(20,184,166,.8); }

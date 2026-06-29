@@ -272,10 +272,42 @@ window.FAIRGATE_TRILHA = (function () {
     ],
   };
   CONSOLIDATION.total = CONSOLIDATION.questions.length;
+  // Resposta-modelo (estática) para AUTOCOMPARAÇÃO na carta de auto-explicação — sintetiza as 3
+  // questões. NUNCA é correção do texto do aluno; é o alvo contra o qual ele compara o próprio
+  // rascunho (auto-explicação · produção · Bisra et al. 2018). O gate continua sendo só as 7/7.
+  CONSOLIDATION.modelAnswer =
+    "O viés que o fairgate bloqueia nasce no DADO, não no modelo: o rótulo histórico do German Credit " +
+    "já traz um gap de taxa-base de 12,8 p.p. e o jovem<25 é só ~15% da base — um modelo apenas " +
+    "amplificaria. Por isso o fairgate age como GATE (não relatório): reprova a ingestão e bloqueia o " +
+    "treino (cláusula suspensiva), e mitiga com o MENOR λ de reponderação Kamiran–Calders que faz o " +
+    "gate inteiro passar — sem afrouxar o limite nem inflar a minoria com SMOTE. E mantém o veredito " +
+    "honesto e auditável: limites versionados no policy.yaml (fonte única, L1≡L2), veredito determinístico " +
+    "com proveniência (hash + seed), e o ponto escolhido respeita a justiça com a menor perda de acurácia.";
+
+  // Sementes socráticas (tutoria dialógica · AutoTutor; lição de design do RCT de tutor de IA,
+  // Kestin et al. 2024). O tutor PERGUNTA (ask) e dá uma PISTA (follow) — nunca a resposta pronta,
+  // nunca avalia, nunca toca o veredito (P3). 'follow' é autorado p/ o modo offline pump de forma
+  // determinística. Inspirado nos movements tipo 'q' (que existiam só p/ 3 das 7 estações).
+  const SOCRATIC = {
+    1: { ask: "Se a sonda não enxerga sexo nem idade, como ela ainda pode produzir um veredito injusto?",
+         follow: "Olhe os proxies: variáveis correlacionadas ao grupo protegido (e o próprio NA como proxy) carregam o sinal mesmo sem a coluna. Derivamos os atributos protegidos para MEDIR, não para alimentar o modelo." },
+    2: { ask: "Uma coluna 100% preenchida ainda pode reprovar a 'completude representacional'. Como?",
+         follow: "Completude aqui não é % de não-nulos — é a cobertura DO SUBGRUPO. Se o jovem<25 é ~15% da base, o modelo subajusta a minoria mesmo sem nenhum nulo." },
+    3: { ask: "Por que escrever a validação como contrato-código (Pandera) no CI, em vez de um relatório de qualidade que alguém lê?",
+         follow: "Um relatório avisa; um contrato bloqueia. No CI ele é PR-blocker (cláusula suspensiva, P1): nada chega ao treino sem passar — e a checagem é versionada e reproduzível." },
+    4: { ask: "O limite de DI a 0,80 é a regra dos EUA. Que número Risco/Jurídico fixaria sob LGPD e igualdade material — e quem assina?",
+         follow: "Não há número 'neutro': o limite é decisão de política, registrada e assinada (Fairness Steward). O gate torna essa escolha explícita e versionada — não a esconde num default." },
+    5: { ask: "A ordem importa: corrigir representação antes de reponderar. Quanta acurácia a banca aceita trocar por paridade?",
+         follow: "A resposta certa não é 'o máximo de fairness' — é o MENOR custo que faz o gate passar. Imputação estratificada corrige a representação; Kamiran–Calders quebra a correlação protegido↔rótulo." },
+    6: { ask: "Se o gate volta vermelho depois da mitigação, o que se ajusta — o threshold ou o dataset?",
+         follow: "Aprendizado unidirecional (P4): a divergência corrige o DADO/contrato, nunca afrouxa o limite. Relaxar um limite é decisão humana registrada (PR + assinatura), não um loop automático." },
+    7: { ask: "Promover este dataset ao treino exige assinatura. Você assina o ponto verde — e registra o override se um dia quiser outro?",
+         follow: "O ponto ótimo respeita o limite com a MENOR perda de acurácia — não a fairness máxima. Assinar é assumir a proveniência (policy + seed + hash); o override é rastreável, não silencioso." },
+  };
 
   const TOTAL = STATIONS.length;
   const EST_MIN = STATIONS.reduce((s, m) => s + m.estMin, 0);
   function get(n) { return STATIONS.find((s) => s.n === n); }
 
-  return { STATIONS, TOTAL, EST_MIN, get, CONSOLIDATION };
+  return { STATIONS, TOTAL, EST_MIN, get, CONSOLIDATION, SOCRATIC };
 })();

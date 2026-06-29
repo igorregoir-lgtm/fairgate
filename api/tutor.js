@@ -25,6 +25,10 @@ const SYSTEM_PROMPT = [
   "Fairness Steward), não sua. Fora do escopo: redirecione gentilmente para o tema do artefato.",
 ].join(" ");
 
+// Addendum do MODO SOCRÁTICO (tutoria dialógica): o aprendiz está RESPONDENDO a uma pergunta sua.
+// Você provoca e dá pistas — não entrega a resposta, não avalia, não pontua (P3 segue inviolável).
+const SOCRATIC_ADDENDUM = " MODO SOCRÁTICO: o aprendiz acaba de RESPONDER a uma pergunta sua. NÃO entregue a resposta pronta. Em no máximo 3 frases: valide o que estiver correto, aponte gentilmente a lacuna, e devolva UMA pista ou pergunta de acompanhamento que o leve a completar o raciocínio sozinho. Você provoca e ensina — NUNCA avalia, não dá nota, não diz 'correto/errado' como veredito, não toca o gate (P3).";
+
 function readBody(req) {
   return new Promise((resolve) => {
     if (req.body) {
@@ -100,6 +104,7 @@ module.exports = async (req, res) => {
   const question = (lastUser ? lastUser.content : String(body.question || "")).slice(0, 1200);
   // strip de colchetes/chaves p/ reduzir superfície de prompt-injection estrutural (P3 já é enforced em Python)
   const station = (body.station || body.screen) ? String(body.station || body.screen).slice(0, 80).replace(/[\[\]{}]/g, "") : "";
+  const socratic = body.mode === "socratic";
   if (!question.trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: "pergunta vazia" })); }
 
   if (process.env.DEEPSEEK_API_KEY && process.env.OPENROUTER_API_KEY)
@@ -125,7 +130,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + (station ? ` Contexto: o aprendiz está na estação "${station}".` : "") },
+          { role: "system", content: SYSTEM_PROMPT + (station ? ` Contexto: o aprendiz está na estação "${station}".` : "") + (socratic ? SOCRATIC_ADDENDUM : "") },
           ...(history && history.length ? history : [{ role: "user", content: (station ? `[Estação atual: ${station}] ` : "") + question }]),
         ],
         temperature: 0.3,

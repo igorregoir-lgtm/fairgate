@@ -71,3 +71,38 @@ test("CONSOLIDAÇÃO (gate de aprendizado): retrieval cumulativo bem-formado (1 
     assert.ok(allFb(q.options), `questão ${q.id}: feedback em toda opção`);
   }
 });
+
+test("AUTO-EXPLICAÇÃO: resposta-modelo é string não-vazia e cobre os 3 eixos (dado · gate · auditável)", () => {
+  const ma = T.CONSOLIDATION.modelAnswer;
+  assert.ok(typeof ma === "string" && ma.trim().length > 80, "modelAnswer substancial");
+  assert.match(ma, /dado/i, "cita a origem no dado");
+  assert.match(ma, /gate|bloqueia/i, "cita o gate/bloqueio");
+  assert.match(ma, /policy\.yaml|determinístico|proveni/i, "cita a honestidade auditável");
+});
+
+test("SOCRÁTICO: as 7 estações têm semente (ask) + pista (follow) distintas e não-vazias", () => {
+  const S = T.SOCRATIC;
+  assert.ok(S && typeof S === "object", "SOCRATIC existe");
+  for (let n = 1; n <= T.TOTAL; n++) {
+    const s = S[n];
+    assert.ok(s && typeof s.ask === "string" && s.ask.trim(), `estação ${n}: ask presente`);
+    assert.ok(typeof s.follow === "string" && s.follow.trim(), `estação ${n}: follow presente`);
+    assert.notEqual(s.ask.trim(), s.follow.trim(), `estação ${n}: ask ≠ follow (pergunta não é a pista)`);
+    assert.ok(/\?$/.test(s.ask.trim()), `estação ${n}: ask termina em "?" (é pergunta socrática)`);
+  }
+});
+
+test("P3 (caminho do tutor ⟂ gate): a via socrática NUNCA muta o veredito (learnCert/consol/results)", () => {
+  const src = readFileSync(join(ROOT, "app.js"), "utf8");
+  const slice = (fnName) => {
+    const i = src.indexOf("function " + fnName);
+    assert.ok(i >= 0, `função ${fnName} existe`);
+    const j = src.indexOf("\n  function ", i + 1);
+    return src.slice(i, j === -1 ? i + 1200 : j);
+  };
+  const socratic = slice("socraticStation");
+  assert.ok(!/learnCert|S\.consol|\.passed|results\.push/.test(socratic), "socraticStation não toca o estado do gate");
+  // sendDock pode ler S.step, mas a ramificação socrática não pode escrever no gate de aprendizado
+  const sendDock = slice("sendDock");
+  assert.ok(!/learnCert|\.passed|results\.push/.test(sendDock), "sendDock não muta o gate de aprendizado");
+});

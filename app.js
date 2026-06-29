@@ -22,7 +22,7 @@
     gate: "idle", imputed: false, reweighed: false, verdict: null,
     lambdaIdx: 0,
     completed: loadProgress(), check: null, picked: null, conf: null, calib: {}, consol: null, learnCert: false, tour: false, defShown: true,
-    dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false },
+    dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false, socratic: null },
   };
   // áudio/voz fora do estado de render (persistem entre re-renders)
   let _audio = null, _rec = null, _ttsStatus = null, _ptVoice = null, _speakToken = 0;
@@ -242,14 +242,19 @@
     S.dock.messages.push({ role: "user", content: q });
     S.dock.input = ""; S.dock.loading = true; render(); scrollDock();
     const m = T.get(S.step);
+    const socN = S.dock.socratic;   // se setado, este turno é a RESPOSTA do aluno à pergunta socrática
+    const socFollow = socN && T.SOCRATIC[socN] ? T.SOCRATIC[socN].follow : null;
     let answer;
     try {
       const hist = S.dock.messages.filter((x) => x.role === "user" || x.role === "assistant");
       const r = await fetch("/api/tutor", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: hist, station: m ? `${m.n} · ${m.name}` : "" }) });
+        body: JSON.stringify({ messages: hist, station: m ? `${m.n} · ${m.name}` : "", mode: socN ? "socratic" : undefined }) });
       if (!r.ok) throw new Error("http " + r.status);
-      const d = await r.json(); answer = d.answer || tutorOffline(S.step, q);
-    } catch (e) { answer = tutorOffline(S.step, q); }   // camada 3: offline determinístico no cliente
+      const d = await r.json();
+      // socrático: só o LLM produz um pump rico; sem chave/offline cai na PISTA autorada (não no Q&A por keyword)
+      answer = (socN && d.source !== "llm") ? (socFollow || tutorOffline(S.step, q)) : (d.answer || socFollow || tutorOffline(S.step, q));
+    } catch (e) { answer = socFollow || tutorOffline(S.step, q); }   // camada 3: offline determinístico no cliente
+    if (socN) S.dock.socratic = null;   // um pump socrático, depois volta ao Q&A normal (formativo, nunca gate · P3)
     S.dock.loading = false; S.dock.messages.push({ role: "assistant", content: answer }); render(); scrollDock();
     if (S.dock.speakOn) speak(answer);
   }
@@ -257,6 +262,16 @@
     const m = T.get(n); if (!m) return;
     S.dock.open = true; ensureWelcome(); S.dock.speakOn = true;
     sendDock(`Explique de forma clara a fase "${m.name}" (estação ${m.n} de 7) do fairgate: o que ela mostra, por que importa e a conexão com o viés/justiça.`);
+  }
+  // modo socrático: o tutor PERGUNTA (semente autorada de SOCRATIC), o próximo turno do aluno vira a resposta
+  // e recebe um pump (pista) — nunca a resposta pronta, nunca avalia, nunca toca o veredito (P3).
+  function socraticStation(n) {
+    const s = T.SOCRATIC[n]; if (!s) return;
+    S.dock.open = true; ensureWelcome(); S.dock.socratic = n;
+    S.dock.messages.push({ role: "assistant", content: s.ask });
+    render(); scrollDock();
+    const inp = root.querySelector(".fg-dock-input"); if (inp) inp.focus();
+    if (S.dock.speakOn) speak(s.ask);
   }
 
   // ---- voz (porte de use-speak): TTS de servidor (/api/tts) + fallback do navegador ----
@@ -400,6 +415,8 @@
       case "closeDock": closeDock(); break;
       case "dockSend": { const ta = root.querySelector(".fg-dock-input"); sendDock(ta ? ta.value : ""); break; }
       case "dockSuggest": sendDock(el.getAttribute("data-q") || ""); break;
+      case "socratic": socraticStation(n); break;
+      case "revealModel": { const ta = root.querySelector(".fg-explain-input"); if (S.consol) { S.consol.explainText = ta ? ta.value : ""; S.consol.explainRevealed = true; } render(); break; }
       case "toggleSpeak": toggleSpeak(); break;
       case "toggleMic": toggleMic(); break;
       case "dockStop": stopSpeak(); render(); break;
@@ -1027,6 +1044,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <button class="fg-btn fg-btn-sm ${done ? "fg-btn-applied" : ""}" data-act="openCheck" data-n="${m.n}" style="margin-top:11px; width:100%;">${done ? "✓ check respondido · rever" : "Responder o check ▸"}</button>
         ${m.n === 7 ? `<button class="fg-consol-cta ${S.learnCert ? "done" : ""}" data-act="openConsol" style="margin-top:9px;" title="Prova de consolidação — o gate de aprendizado, espelho do gate de dados">${S.learnCert ? "✓ aprendizado_consolidado · rever" : "Prova de consolidação · gate de aprendizado ▸"}</button>` : ""}
         <button class="fg-foot-tutor" data-act="explain" data-n="${m.n}" style="width:100%; margin-top:11px; justify-content:center;" title="O tutor explica esta fase (por voz)"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>O Tutor Explica</span></button>
+        ${T.SOCRATIC[m.n] ? `<button class="fg-socratic-cta" data-act="socratic" data-n="${m.n}" style="width:100%; margin-top:8px;" title="O tutor te faz uma pergunta e dá pistas — não a resposta (formativo · nunca toca o veredito)"><svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12' y2='17'/><circle cx='12' cy='12' r='10'/></svg><span>Topa um desafio?</span></button>` : ""}
       </div>
       <div class="fg-ped-list">
         ${guideBlock}
@@ -1131,6 +1149,30 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
       </div>
     </div>`;
   }
+  // carta de auto-explicação (produção · auto-explicação · ilusão de profundidade explicativa).
+  // OPCIONAL, pós-gate 7/7, sessão-only, NUNCA avaliada — só autocomparação com resposta-modelo estática.
+  function selfExplainCard(c) {
+    const esc = (x) => (x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const C = T.CONSOLIDATION;
+    if (!c.explainRevealed) {
+      return `<div class="fg-explain">
+        <div class="mono" style="font-size:9px; letter-spacing:.13em; color:#0F9486;">AUTO-EXPLICAÇÃO · OPCIONAL · NÃO AVALIADA</div>
+        <div style="font-size:12px; line-height:1.5; color:rgba(14,31,48,.78); margin-top:6px; font-weight:300;">Você <em>reconheceu</em> as respostas certas. Agora <strong style="font-weight:500;">produza</strong>: explique o fairgate como se ensinasse um colega de Risco — em 2-3 frases. Articular nas próprias palavras revela a lacuna que o reconhecimento esconde.</div>
+        <textarea class="fg-explain-input" rows="3" placeholder="Em 2-3 frases, com suas palavras…" aria-label="Sua explicação do fairgate">${esc(c.explainText || "")}</textarea>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:10px; flex-wrap:wrap;">
+          <span style="font-size:10.5px; color:#5B7691; font-weight:300;">Não corrigimos — você compara com a resposta-modelo.</span>
+          <button class="fg-btn fg-btn-sm" data-act="revealModel">Revelar explicação-modelo ▸</button>
+        </div>
+      </div>`;
+    }
+    const mine = esc(c.explainText || "").trim();
+    return `<div class="fg-explain">
+      <div class="mono" style="font-size:9px; letter-spacing:.13em; color:#0F9486;">SUA EXPLICAÇÃO × A RESPOSTA-MODELO · COMPARE</div>
+      ${mine ? `<div class="fg-explain-mine"><div class="mono" style="font-size:8px; letter-spacing:.1em; color:#5B7691;">VOCÊ ESCREVEU</div><div style="font-size:12px; line-height:1.5; color:rgba(14,31,48,.82); margin-top:4px; font-weight:300;">${mine}</div></div>` : ""}
+      <div class="fg-explain-model"><div class="mono" style="font-size:8px; letter-spacing:.1em; color:#0F9486;">RESPOSTA-MODELO</div><div style="font-size:12px; line-height:1.55; color:rgba(14,31,48,.8); margin-top:4px; font-weight:300;">${C.modelAnswer}</div></div>
+      <div style="font-size:11px; color:#5B7691; margin-top:9px; font-weight:300;">Onde sua explicação tinha buracos? Esses pontos são os que mais valem reler — a surpresa fixa a correção.</div>
+    </div>`;
+  }
   function consolVerdict() {
     const c = S.consol, C = T.CONSOLIDATION;
     const hits = c.results.filter((r) => r.correct).length;
@@ -1145,6 +1187,8 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
             </div>
             <div style="font-size:13.5px; line-height:1.55; color:rgba(14,31,48,.76); margin-top:16px; font-weight:300;">Você cruzou as 7 estações por <strong style="color:#0F9486; font-weight:500;">retrieval cumulativo</strong> e acertou ${hits}/${C.total}. Este gate trata o <strong style="color:#0E1F30; font-weight:500;">seu aprendizado</strong> como o fairgate trata o dado: não se declara consolidado sem prova — o espelho exato do <em class="mono" style="font-size:12px;">dataset_aprovado</em>.</div>
             <div class="mono" style="font-size:10px; letter-spacing:.04em; color:#5B7691; margin-top:14px; padding-top:13px; border-top:1px solid rgba(14,31,48,.1);">proveniência · retrieval ${hits}/${C.total} · calibração: ${highConf} de alta confiança · policy v${P.version} <span style="color:#0F9486;">#${policyHash}</span></div>
+            <div style="font-size:11px; line-height:1.5; color:rgba(14,31,48,.6); margin-top:11px; font-weight:300;">Gate de maestria + tutor 1:1 — a <strong style="font-weight:500;">estrutura</strong> que a pesquisa de tutoria (Bloom 1984; VanLehn 2011; Kestin 2024) associa aos maiores ganhos de aprendizado.</div>
+            ${selfExplainCard(c)}
             <div style="display:flex; gap:10px; margin-top:16px;">
               <button class="fg-btn fg-btn-sm no-print" data-act="closeConsol">Fechar ✓</button>
               <button class="fg-btn-ghost no-print" data-act="print">Imprimir certificado</button>
