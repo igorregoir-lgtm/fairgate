@@ -11,28 +11,28 @@ emitindo um artefato `dataset_aprovado` com **proveniência** apenas após reexe
 
 ## 2. Requisitos funcionais (FR) ↔ estações
 - **FR-1 · Ingestão & mapeamento** — carregar o dataset, derivar atributos protegidos (`sex`, `age_lt_25`),
-  expor a disparidade de taxa-base no dado cru.
+ expor a disparidade de taxa-base no dado cru.
 - **FR-2 · Métricas de Data Quality** (rubrica 25%) — 3 dos 6 pilares (Aula 4): **Completude**
-  representacional (cobertura de subgrupo, P5), **Consistência** de domínio (NA `not_known`), **Precisão**
-  (gap de taxa-base + DI). Cada métrica tem **limite operacional** em `policy.yaml`.
+ representacional (cobertura de subgrupo, P5), **Consistência** de domínio (NA `not_known`), **Precisão**
+ (gap de taxa-base + DI). Cada métrica tem **limite operacional** em `policy.yaml`.
 - **FR-3 · Contrato de schema executável** — 7 checagens versionadas (Pandera), dois níveis
-  (WARNING registra/segue · BLOCKER reprova/interrompe no CI como PR-blocker).
+ (WARNING registra/segue · BLOCKER reprova/interrompe no CI como PR-blocker).
 - **FR-4 · Gate de fairness** (a espinha) — 3 camadas (L1 contrato · L2 fairness · L3 regressão); treina
-  uma **sonda** determinística (LogReg, seed 42) que **exclui** os atributos protegidos; mede DI/DPD e
-  bloqueia se cruzar o limite. **Veredito determinístico** (P3).
+ uma **sonda** determinística (LogReg, seed 42) que **exclui** os atributos protegidos; mede DI/DPD e
+ bloqueia se cruzar o limite. **Veredito determinístico** (P3).
 - **FR-5/6 · Mitigação** (rubrica 30%) — (Ação 02) **imputação estratificada** por subgrupo + flag
-  `missingness-as-signal`; (Ação 01) **reponderação Kamiran–Calders** `w(g,y)=P(g)P(y)/P(g,y)`. A **ordem
-  importa**: corrigir representação antes de reponderar.
+ `missingness-as-signal`; (Ação 01) **reponderação Kamiran–Calders** `w(g,y)=P(g)P(y)/P(g,y)`. A **ordem
+ importa**: corrigir representação antes de reponderar.
 - **FR-7 · Regressão de justiça** — re-medição **obrigatória**; `dataset_aprovado` só é emitido se o gate
-  voltar verde (invariante 4).
+ voltar verde (invariante 4).
 - **FR-8 · Trade-off** — **fronteira de Pareto** acurácia × justiça; o ponto escolhido respeita o limite
-  com a **menor perda de acurácia**.
+ com a **menor perda de acurácia**.
 
 ## 3. Política (`policy.yaml`, default)
 ```
 version: 1
 protected_attributes: [sex, age_lt_25]
-quality:  { coverage_min: 0.30, domain_violation_max: 0.05, base_rate_gap_max: 0.10 }
+quality: { coverage_min: 0.30, domain_violation_max: 0.05, base_rate_gap_max: 0.10 }
 fairness: { disparate_impact_min: 0.80, demographic_parity_diff_max: 0.10 }
 probe_model: { seed: 42, test_size: 0.25 }
 ```
@@ -42,7 +42,7 @@ probe_model: { seed: 42, test_size: 0.25 }
 - **P1** cláusula suspensiva — o gate **bloqueia**, não recomenda.
 - **P3** diagnóstico pode ser heurístico; o **veredito é determinístico** (Python puro sobre `policy.yaml`).
 - **P4** aprendizado **unidirecional** — a divergência (gate vermelho) corrige **dataset/contrato**, nunca
-  afrouxa o limite; relaxar limite = decisão humana (PR + assinatura do Fairness Steward).
+ afrouxa o limite; relaxar limite = decisão humana (PR + assinatura do Fairness Steward).
 - **P6** veredito sem **proveniência** (`policy#hash · data#hash · seed`) é inválido.
 - **P7** subgrupos **nomeáveis** (não idade contínua) para o veredito ser legível.
 
@@ -51,7 +51,7 @@ probe_model: { seed: 42, test_size: 0.25 }
 - bad jovem<25 **40,9%** vs ≥25 **28,1%** → gap **12,8 p.p.** (> 10).
 - NA (saving+checking) **28,8%** (> 5%). cobertura jovem<25 **14,9%** (< 30%).
 - DI do probe **passa cru** (0,966) — a sonda exclui sexo/idade; a injustiça está na representação e nos
-  rótulos. **Arco**: cru → FAIL ; mitigado (impute + reweigh @λ mínimo que passa o gate) → PASS.
+ rótulos. **Arco**: cru → FAIL ; mitigado (impute + reweigh @λ mínimo que passa o gate) → PASS.
 
 ## 6. Pedagogia (Trilha)
 Por estação: **Bloom** (eyebrow) · **objetivo** · **instrução** com *scaffolding decrescente* (detalhada
@@ -67,7 +67,7 @@ estações em ordem. **Capstone** = certificado `dataset_aprovado` imprimível (
 - `imputeStratified(rows)` · `coverageWeights` · `mitigationWeights` (KC×cobertura) · `sweepWeights(rows, λ)`.
 - `runGate(rows, policy, state)` → `{ status, checks[6], failures, metrics, probe, provenance }`.
 - `tradeoff(rows, policy, rawRows, steps)` → `{ points[], raw, chosen }` onde **`chosen` = menor λ que passa
-  o gate INTEIRO** (não só DI/DPD) — P4.
+ o gate INTEIRO** (não só DI/DPD) — P4.
 
 ## 8. Edge cases
 - `sessionStorage` indisponível (modo privado/SSR) → `try/catch`, progresso vira no-op, nunca quebra.

@@ -97,6 +97,6 @@ Vitaliza expirou). Navegador (`SpeechSynthesis` pt-BR) é a degradação que **s
 **Invariante P3 (confirmado em revisão):** o tutor (texto e voz) **só ensina** — não tem acesso ao motor nem ao
 estado do gate; o caminho do veredito e o do tutor são disjuntos.
 **Segurança.** Segredos só em env var no servidor; `api/tts.js` com rate-limit por IP, cap de input, Content-Type
-validado, sanitização de BOM. ⚠️ Os segredos do Vitaliza (Google SA, ElevenLabs, DeepSeek, OpenRouter, Supabase)
+validado, sanitização de BOM. Os segredos do Vitaliza (Google SA, ElevenLabs, DeepSeek, OpenRouter, Supabase)
 foram expostos em chat — **devem ser rotacionados**.
 **Consequência.** Voz humana pt-BR ao vivo (Google) + tutor onipresente; funciona offline (voz do navegador).

@@ -15,11 +15,11 @@ que **bloqueia** o treino enviesado na ingestão — não recomenda, **bloqueia*
 - bad jovem<25 **40,9%** vs ≥25 **28,1%** → gap **12,8 p.p.** (> limite 10).
 - NA saving+checking **28,8%** (> limite 5%). cobertura jovem<25 **14,9%** (< 30%).
 - DI do probe **já passa cru** (0,966 ≥ 0,80): o probe exclui sexo/idade; nos dados reais a
-  injustiça mora na **representação** e nos **rótulos**, não num único número de DI. ← lição mais forte.
+ injustiça mora na **representação** e nos **rótulos**, não num único número de DI. ← lição mais forte.
 - **Arco**: cru → FAIL (completude · consistência · precisão) ; mitigado → PASS.
 - **Mitigação**: imputação estratificada (zera NA, +flag) + cobertura (jovem→31%) + reponderação
-  Kamiran–Calders. O gap de taxa-base cai monotônico com λ; **λ mínimo que passa o gate inteiro = 0,30**
-  (AUC 0,762 — menor custo). → corrigir `chosen` para "min λ que passa TODO o gate" (P4: nunca afrouxar limite).
+ Kamiran–Calders. O gap de taxa-base cai monotônico com λ; **λ mínimo que passa o gate inteiro = 0,30**
+ (AUC 0,762 — menor custo). → corrigir `chosen` para "min λ que passa TODO o gate" (P4: nunca afrouxar limite).
 
 ## As 7 estações (a Trilha · Data Engineering)
 1. **Ingestão & mapeamento** (FR-1) — deriva sexo · idade<25; disparidade na taxa-base crua.
@@ -40,44 +40,44 @@ que **bloqueia** o treino enviesado na ingestão — não recomenda, **bloqueia*
 
 ## Princípios de arquitetura (P1–P7, do design)
 - P1 cláusula suspensiva (bloqueia, não recomenda) · P3 diagnóstico heurístico, **veredito determinístico** ·
-  P4 aprendizado unidirecional (divergência corrige dado/contrato, nunca o limite) ·
-  P6 veredito sem proveniência é inválido · P7 subgrupos nomeáveis para veredito legível.
+ P4 aprendizado unidirecional (divergência corrige dado/contrato, nunca o limite) ·
+ P6 veredito sem proveniência é inválido · P7 subgrupos nomeáveis para veredito legível.
 
 ## Estrutura de arquivos (alvo)
 ```
 Artefatos/
-  index.html              # console (recria o .dc.html em DOM real)
-  app.js                  # render + interação (substitui DCLogic) — globais, sem módulos (file://)
-  fairgate-engine.js      # motor determinístico (reusado + real-data + chosen corrigido + domínios reais)
-  data/german-credit.js   # window.GERMAN_CREDIT = 1000 linhas reais (gerado do CSV)
-  styles/fairgate.css      # estilos do console
-  styles/tokens/*.css       # tokens allla (colors/fonts/typography/spacing)
-  trilha/missions.js       # 7 estações: Bloom + objetivo + instrução + check (fonte única)
-  tests/engine.test.mjs    # testes do motor (arco, determinismo, métricas) — node --test
-  docs/PLAN.md · docs/SPEC.md · docs/DECISIONS.md
-  scripts/build-data.mjs   # CSV real -> data/german-credit.js
-  README.md
+ index.html # console (recria o .dc.html em DOM real)
+ app.js # render + interação (substitui DCLogic) — globais, sem módulos (file://)
+ fairgate-engine.js # motor determinístico (reusado + real-data + chosen corrigido + domínios reais)
+ data/german-credit.js # window.GERMAN_CREDIT = 1000 linhas reais (gerado do CSV)
+ styles/fairgate.css # estilos do console
+ styles/tokens/*.css # tokens allla (colors/fonts/typography/spacing)
+ trilha/missions.js # 7 estações: Bloom + objetivo + instrução + check (fonte única)
+ tests/engine.test.mjs # testes do motor (arco, determinismo, métricas) — node --test
+ docs/PLAN.md · docs/SPEC.md · docs/DECISIONS.md
+ scripts/build-data.mjs # CSV real -> data/german-credit.js
+ README.md
 ```
 
 ## Slices (cada uma: plano→implementa→verifica) — STATUS
-- **S0 Fundação** ✅ skeleton, base real embutida, motor adaptado, 6 testes verdes (arco/determinismo).
-- **S1 Console** ✅ index.html + app.js recriando o design; 7 estações; arco BLOCKED→APPROVED verificado via DOM.
-- **S2 Pedagogia** ✅ Bloom, scaffolding, station-checks predict-first (modal), progresso (sessionStorage), tour, aprofundar.
-- **S3 Capstone** ✅ certificado `dataset_aprovado` imprimível + @media print.
-- **S4 God-mode** ✅ reduced-motion, a11y inicial (aria/foco/Esc), responsivo, toggle Real↔Sintético, controle de DI editável; header 107→62px.
-- **S5 Verificar** ✅ testes 6/6 ✓; docs+ADRs+README ✓; **2 revisões adversariais aplicadas** (0 CRITICAL;
-  HIGH/MEDIUM/LOW válidos corrigidos — guarda modal, fallback base vazia, a11y: foco/teclado/landmarks/SVG/
-  contraste). Gap pedagógico corrigido: `instruction` (guide-rail) agora surfaçada + adaptativa à fonte.
+- **S0 Fundação** skeleton, base real embutida, motor adaptado, 6 testes verdes (arco/determinismo).
+- **S1 Console** index.html + app.js recriando o design; 7 estações; arco BLOCKED→APPROVED verificado via DOM.
+- **S2 Pedagogia** Bloom, scaffolding, station-checks predict-first (modal), progresso (sessionStorage), tour, aprofundar.
+- **S3 Capstone** certificado `dataset_aprovado` imprimível + @media print.
+- **S4 God-mode** reduced-motion, a11y inicial (aria/foco/Esc), responsivo, toggle Real↔Sintético, controle de DI editável; header 107→62px.
+- **S5 Verificar** testes 6/6 ✓; docs+ADRs+README ✓; **2 revisões adversariais aplicadas** (0 CRITICAL;
+ HIGH/MEDIUM/LOW válidos corrigidos — guarda modal, fallback base vazia, a11y: foco/teclado/landmarks/SVG/
+ contraste). Gap pedagógico corrigido: `instruction` (guide-rail) agora surfaçada + adaptativa à fonte.
 
 ## Retomada (decisões consolidadas) — STATUS
-- **Rubrica primeiro** ✅ lida (Barema Excelência: DQ 25% · Mitigação 30% · Validation 30% · Formatação 15%);
-  mapa em `docs/RUBRICA.md`; 3 inconsistências dos slides flagradas (jovem 19%→14,9% · pesos · limites).
-- **Fonte única** ✅ `policy.yaml` → `data/policy.js` (L1) + leitura direta (L2); teste de cross-check no `node --test`.
-- **L2 Marimo** ✅ `notebook/fairgate.py` (EDA + Pandera + gate + mitigação) + `crosscheck.py` (L1==L2 **bit-idêntico**)
-  + `js_golden.mjs` + `fairgate.html` exportado + venv.
-- **Tutor 3 camadas** ✅ `api/tutor.js` (DeepSeek **ao vivo** server-side + fallback) + cliente (offline). P3 respeitado.
-- **GitHub** ✅ https://github.com/igorregoir-lgtm/fairgate · **Vercel** ✅ https://fairgate-eight.vercel.app (tutor LLM live).
-- **Fix λ** ✅ minPassLambda=0.30 (harness + golden).
+- **Rubrica primeiro** lida (Barema Excelência: DQ 25% · Mitigação 30% · Validation 30% · Formatação 15%);
+ mapa em `docs/RUBRICA.md`; 3 inconsistências dos slides flagradas (jovem 19%→14,9% · pesos · limites).
+- **Fonte única** `policy.yaml` → `data/policy.js` (L1) + leitura direta (L2); teste de cross-check no `node --test`.
+- **L2 Marimo** `notebook/fairgate.py` (EDA + Pandera + gate + mitigação) + `crosscheck.py` (L1==L2 **bit-idêntico**)
+ + `js_golden.mjs` + `fairgate.html` exportado + venv.
+- **Tutor 3 camadas** `api/tutor.js` (DeepSeek **ao vivo** server-side + fallback) + cliente (offline). P3 respeitado.
+- **GitHub** https://github.com/igorregoir-lgtm/fairgate · **Vercel** https://fairgate-eight.vercel.app (tutor LLM live).
+- **Fix λ** minPassLambda=0.30 (harness + golden).
 
 ## Estado: convergido (nível tesla/god-mode), dual-layer + tutor + repo público
 ## Pendências (recomendadas)

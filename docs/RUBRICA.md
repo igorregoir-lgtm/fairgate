@@ -34,11 +34,11 @@
 Valoriza: completude técnica, integração tech↔negócio, **evidências formais**, documentação, explicabilidade
 individual. → o **notebook L2** é exatamente a "evidência formal"; o veredito legível é a explicabilidade.
 
-## ⚠️ Inconsistências encontradas (slides graded × rubrica × dado real) — a resolver
+## Inconsistências encontradas (slides graded × rubrica × dado real) — a resolver
 1. **Slide 01 diz "jovem<25 19%"**; o **dado real = 14,9%** (o console e o notebook usam o real). → atualizar o slide.
 2. **Pesos nos slides (30/40/30)** ≠ **rubrica (25/30/30/15)**. → corrigir os rótulos de peso nos 3 slides.
 3. **Limites do slide** ("nenhum subgrupo <25%", "≥98% não-nulo") ≠ `policy.yaml` (`coverage_min: 0.30`). →
-   **fonte única** = `policy.yaml` + CSV real; alinhar o texto dos slides aos limites versionados.
+ **fonte única** = `policy.yaml` + CSV real; alinhar o texto dos slides aos limites versionados.
 
 > **Decisão (fonte única, P6):** `policy.yaml` + `german_credit_data.csv` governam L1 (console) **e** L2 (notebook).
 > Nenhum número vive hardcoded divergente; o slide cita o que L2 computa. L1 e L2 **não podem divergir** (teste de cross-check).
