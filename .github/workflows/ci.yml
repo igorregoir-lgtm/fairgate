@@ -1,0 +1,45 @@
+# Gate de submissão (allla · critério de pronto explícito).
+# O gate é honesto: exercita o caminho REAL — regenera o golden do motor JS vivo (L1)
+# e prova bit-a-bit que L2 (Python) não diverge. "Verde falso" (gate sobre stand-in) é a
+# falha-reverso a vigiar — por isso o golden NÃO é confiado de snapshot, é regerado aqui.
+# Zero dependências: node --check / node --test (sem npm install) + crosscheck.py (stdlib).
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: critério de pronto — check · test · cross-check L1≡L2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax-check (node --check em todo JS/MJS)
+        run: node scripts/check.mjs
+
+      - name: Testes (node --test) — motor + invariantes do gate + API (hermético)
+        run: node --test "tests/**/*.test.mjs"
+
+      - name: Gerar o golden do motor JS vivo (L1)
+        run: node notebook/js_golden.mjs
+
+      - name: Cross-check L1 (JS) === L2 (Python) — prova bit-a-bit, gate honesto
+        run: python notebook/crosscheck.py

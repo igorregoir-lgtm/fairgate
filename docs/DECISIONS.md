@@ -100,3 +100,44 @@ estado do gate; o caminho do veredito e o do tutor são disjuntos.
 validado, sanitização de BOM. Os segredos do Vitaliza (Google SA, ElevenLabs, DeepSeek, OpenRouter, Supabase)
 foram expostos em chat — **devem ser rotacionados**.
 **Consequência.** Voz humana pt-BR ao vivo (Google) + tutor onipresente; funciona offline (voz do navegador).
+
+## ADR-011 — Refinamento de UI/UX (tema claro allla, header institucional, tutor 2-entradas)
+**Contexto.** O console nasceu com tema escuro de produto. A direção da marca allla é **clara** (paleta light) e
+o repositório-irmão **Vitaliza** estabeleceu padrões de moldura (header dark + título centralizado + banner de
+definição) e de acesso ao tutor.
+**Decisão.** Converter para a **paleta clara allla** (sem logo wordmark; a marca vira o gráfico de barras dos três
+"l", usado em badge e favicon). Adotar o **header institucional dark** com título do sistema centralizado (serif),
+**banner de definição** "O que é o fairgate?" no topo (linguagem acessível + rigor técnico, sem anunciar que
+simplifica), e organizar o tutor em **duas entradas** — "O Tutor Explica" (fase atual) e "? Pergunte ao Tutor"
+(chat). Voz do tutor: **TTS progressivo** (síntese por frase, toca a 1ª e pré-busca o resto → início ~3× mais
+rápido). A Trilha **reinicia a cada load** (sem persistir progresso entre reloads — demo-honesto).
+**Consequência.** Consistência forte com Vitaliza e a marca allla. Verificação por **auditoria de contraste
+programática** (WCAG, todas as telas) no lugar de screenshot. Padrões destilados como aprendizado transversal
+(candidato em `Architectus/Knowledge/outputs/reports/aprendizado-craft-refinamento-ui-2026-06-29.md`).
+
+## ADR-012 — Hardening de produção: CSP por-path + headers de segurança (`vercel.json`)
+**Contexto.** Endpoints públicos (`/api/tutor`, `/api/tts`) + console interativo, sem nenhum header de segurança.
+A app mistura superfícies: console (scripts same-origin), bundle de slides (inline + blob/data) e notebook Marimo
+(jsdelivr + WASM).
+**Decisão.** `vercel.json` com **CSP escopado por caminho** em 3 blocos mutuamente exclusivos: console **estrito**
+(`script-src 'self'` — o único handler inline `onkeydown` foi refatorado p/ delegação), `/slides/` (frouxo o
+suficiente p/ o bundle, sem abrir externo) e `/notebook/` (permite jsdelivr + `unsafe-eval` do Marimo). Mais
+HSTS (2 anos, preload), `nosniff`, `X-Frame-Options: DENY` + `frame-ancestors 'none'`, `Referrer-Policy`,
+`Permissions-Policy` (`microphone=(self)` p/ o tutor; câmera/geo/pagamento off), COOP. As APIs externas
+(DeepSeek/Google/ElevenLabs) são **server-side** → o browser só fala com `'self'` (`connect-src 'self'`).
+Mantido `vercel.json` (não `vercel.ts`) por coerência com o zero-build/zero-deps do ADR-001.
+**Consequência.** Superfície de XSS/clickjacking/sniffing fechada sem quebrar slides/notebook. Alinha às
+primitivas de confiança transversais da allla (hardening como gate, ver ADR-013).
+
+## ADR-013 — Gate de submissão contínuo (CI), honesto e sem deps
+**Contexto.** O artefato não tinha CI; o diferencial técnico (L1≡L2 bit-idêntico via `crosscheck.py`) era prova
+**pontual**, não contínua. O playbook allla [[criterio-de-pronto-e-gate-de-submissao]] define o gate de submissão,
+com a falha-reverso a vigiar = **"verde falso"** (gate que exercita só stand-ins).
+**Decisão.** GitHub Actions (`gate`) a cada push/PR: `node --check` (sintaxe de todo JS) → `node --test`
+(motor + **property-tests do gate**: "qualquer métrica < limite ⟹ bloqueia", em N seeds; + testes herméticos da
+API) → **cross-check honesto**: `node notebook/js_golden.mjs` regenera o golden do **motor JS vivo** e
+`python notebook/crosscheck.py` prova bit-a-bit que L2 não diverge. **Zero dependências** (sem npm/pip install) —
+coerente com `[[offline-local-first]]`. Scripts nomeados em `package.json` (`check`/`test`/`crosscheck`/`verify`).
+**Consequência.** A divergência L1↔L2 (`[[conflito-de-fonte-explicito]]`) vira **invariante de pipeline**
+verificado em todo commit; o gate corta merge se a prova quebrar. Critério de pronto deste artefato (estágio
+"parceiro técnico"): a coisa difícil — o gate de fairness determinístico — roda e é provada ponta-a-ponta.

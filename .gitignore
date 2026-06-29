@@ -13,3 +13,6 @@ _handoff_ref/
 # SO
 .DS_Store
 Thumbs.db
+
+# build artifact do cross-check (regenerado por js_golden.mjs / CI)
+notebook/.golden.json

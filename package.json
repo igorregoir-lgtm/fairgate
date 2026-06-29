@@ -1,0 +1,21 @@
+{
+  "name": "fairgate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Console de Auditoria de Justiça em Dados de Crédito — data contract executável que bloqueia o treino enviesado (German Credit). Artefato Inteli MBA Módulo 2 · allla.ai.",
+  "license": "MIT",
+  "author": "allla.ai · intelligence applied",
+  "homepage": "https://fairgate-eight.vercel.app",
+  "repository": { "type": "git", "url": "https://github.com/igorregoir-lgtm/fairgate.git" },
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "serve": "node scripts/serve.mjs 4178",
+    "check": "node scripts/check.mjs",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "build:data": "node scripts/build-data.mjs",
+    "build:policy": "node scripts/build-policy.mjs",
+    "build": "npm run build:data && npm run build:policy",
+    "crosscheck": "node notebook/js_golden.mjs && python notebook/crosscheck.py",
+    "verify": "npm run check && npm run test && npm run crosscheck"
+  }
+}

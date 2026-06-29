@@ -56,6 +56,10 @@ em { font-style: normal; }
 .mono { font-family: var(--fg-font-mono); }
 .fr { font-family: var(--fg-font-display); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* skip-link — escondido até receber foco por teclado (a11y) */
+.fg-skip { position: fixed; top: 8px; left: 8px; z-index: 100; transform: translateY(-180%); background: var(--fg-teal-deep); color: #fff; padding: 9px 15px; border-radius: 8px; font-family: var(--fg-font-mono); font-size: 12px; letter-spacing: .03em; text-decoration: none; box-shadow: 0 10px 24px -10px rgba(20,184,166,.7); transition: transform .18s var(--fg-ease); }
+.fg-skip:focus { transform: translateY(0); outline: 2px solid #fff; outline-offset: 2px; }
+.fg-stage:focus { outline: none; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: rgba(14, 31, 48, .14); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

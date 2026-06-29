@@ -9,3 +9,8 @@ __pycache__/
 *.pptx
 *.log
 notebook/__pycache__/
+# package.json fora do upload: mantém o deploy ESTÁTICO (ADR-001 zero-build).
+# git/CI usam o package.json normalmente; o Vercel não o vê → não dispara npm build.
+package.json
+.github/
+docs/

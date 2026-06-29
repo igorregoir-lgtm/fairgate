@@ -1,5 +1,8 @@
 # fairgate — Console do Operador
 
+[![gate](https://github.com/igorregoir-lgtm/fairgate/actions/workflows/ci.yml/badge.svg)](https://github.com/igorregoir-lgtm/fairgate/actions/workflows/ci.yml)
+&nbsp;·&nbsp; sintaxe + testes (motor · invariantes do gate · API) + **cross-check L1≡L2 bit-a-bit** a cada push · MIT
+
 **Data contract executável que bloqueia o treino enviesado.** Artefato Tecnológico do
 **Inteli MBA · Módulo 2 (Eletiva Data Engineering)**, no ecossistema **allla.ai · intelligence applied**.
 

@@ -329,6 +329,13 @@
 
   // ativar por teclado os elementos não-button com data-act (pontos SVG do Pareto)
   root.addEventListener("keydown", (ev) => {
+    // Enter no input do dock → enviar (delegado; substitui o on-handler inline p/ CSP estrito sem 'unsafe-inline')
+    if (ev.key === "Enter" && ev.target.classList && ev.target.classList.contains("fg-dock-input")) {
+      ev.preventDefault();
+      const b = ev.target.parentNode && ev.target.parentNode.querySelector(".fg-dock-send");
+      if (b) b.click();
+      return;
+    }
     if (ev.key !== "Enter" && ev.key !== " ") return;
     const el = ev.target.closest('[data-act="setLambda"]');
     if (el) { ev.preventDefault(); el.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
@@ -485,7 +492,7 @@
       case 6: inner = stepRegress(); break;
       case 7: inner = stepTradeoff(); break;
     }
-    return `<main class="fg-stage">${inner}</main>`;
+    return `<main class="fg-stage" id="fg-conteudo" tabindex="-1">${inner}</main>`;
   }
 
   function head(m, extra) {
@@ -1054,7 +1061,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
       ${sugg}
       <div class="fg-dock-input-row">
         ${micOn ? `<button class="fg-dock-btn mic ${d.listening ? "on" : ""}" data-act="toggleMic" title="${d.listening ? "Ouvindo…" : "Falar pelo microfone"}" aria-label="Falar pelo microfone">${d.listening ? "●" : "<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><rect x='9' y='2' width='6' height='12' rx='3'/><path d='M5 10a7 7 0 0 0 14 0'/><line x1='12' y1='19' x2='12' y2='22'/></svg>"}</button>` : ""}
-        <input class="fg-dock-input" type="text" placeholder="Pergunte ou fale…" value="${esc(d.input || "")}" aria-label="Sua pergunta ao tutor" onkeydown="if(event.key==='Enter'){event.preventDefault();var b=this.parentNode.querySelector('.fg-dock-send'); if(b)b.click();}">
+        <input class="fg-dock-input" type="text" placeholder="Pergunte ou fale…" value="${esc(d.input || "")}" aria-label="Sua pergunta ao tutor">
         <button class="fg-dock-send ${d.loading ? "muted" : ""}" data-act="dockSend" ${d.loading ? "disabled" : ""} aria-label="Enviar pergunta">▸</button>
       </div>
       <div class="mono" style="font-size:8px; color:#8A9AAB; padding:0 4px 2px; letter-spacing:.03em;">offline → voz do navegador · online → voz natural pt-BR (Google/ElevenLabs) · o tutor nunca toca o gate (P3)</div>
