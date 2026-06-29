@@ -440,15 +440,19 @@
     }).join("");
     return `<aside class="fg-rail fg-rail-left" aria-label="Trilha de aprendizado">
       <div class="fg-rail-head">
-        <div class="mono" style="font-size:9.5px; letter-spacing:.2em; color:#647D93;">A TRILHA · DATA ENGINEERING</div>
+        <div class="mono" style="font-size:9.5px; letter-spacing:.2em; color:#647D93;">DATA ENGINEERING · MÓDULO 2</div>
         <div style="display:flex; align-items:center; gap:10px; margin-top:9px;">
           <div class="fg-progress-track" role="progressbar" aria-valuenow="${S.maxStep}" aria-valuemin="0" aria-valuemax="7" aria-label="Estações destravadas"><div class="fg-progress-fill" style="width:${progressW};"></div></div>
           <div class="mono" style="font-size:10px; color:#0F9486; letter-spacing:.04em;">${S.maxStep}/7</div>
         </div>
         <div class="mono" style="font-size:9px; color:#5B7691; margin-top:8px; letter-spacing:.04em;">checks <span style="color:#0F9486; font-weight:600;">✓ ${S.completed.size}/7</span></div>
-        <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour">${S.tour
-          ? "<svg width='10' height='10' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6' fill='currentColor'/></svg>tour ativo · continuar"
-          : "<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M10.5 8.5 15.5 12l-5 3.5z' fill='currentColor' stroke='none'/></svg>fazer o tour guiado · ~" + T.EST_MIN + " min"}</button>
+        <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour" aria-label="${S.tour ? "Continuar a trilha de aprendizado guiada" : "Iniciar a trilha de aprendizado guiada"}">
+          <span class="fg-tour-ic">${S.tour
+            ? "<svg width='17' height='17' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6' fill='currentColor'/></svg>"
+            : "<svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='6' cy='19' r='2.3'/><circle cx='18' cy='5' r='2.3'/><path d='M8.1 17.6C13 15.2 11 8.8 15.9 6.4'/></svg>"}</span>
+          <span class="fg-tour-txt"><span class="fg-tour-title">Trilha de Aprendizado</span><span class="fg-tour-sub">${S.tour ? "em andamento · continuar" : "guiada · 7 estações · ~" + T.EST_MIN + " min"}</span></span>
+          <span class="fg-tour-arrow" aria-hidden="true">▸</span>
+        </button>
       </div>
       <div class="fg-stations">${rows}</div>
       <div class="fg-rail-foot">
