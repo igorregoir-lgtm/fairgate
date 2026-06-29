@@ -404,7 +404,7 @@
     const srcReal = S.source === "real";
     return `<header class="fg-top">
       <div class="fg-top-left">
-        <span class="fg-brand-badge" aria-hidden="true"><svg width="21" height="18" viewBox="0 0 30 26"><rect x="1" y="13" width="5.4" height="12" rx="1" fill="#fff" fill-opacity=".62"/><rect x="8.6" y="7" width="5.4" height="18" rx="1" fill="#fff" fill-opacity=".82"/><rect x="16.2" y="1" width="5.4" height="24" rx="1" fill="#fff"/><rect x="23.8" y="9" width="5.4" height="16" rx="1" fill="#fff" fill-opacity=".82"/></svg></span>
+        <span class="fg-brand-badge" aria-hidden="true"><svg width="20" height="17" viewBox="0 0 30 26"><rect x="3.75" y="10" width="4.5" height="14" rx="1.1" fill="#fff"/><rect x="12.75" y="5" width="4.5" height="19" rx="1.1" fill="#fff"/><rect x="21.75" y="10" width="4.5" height="14" rx="1.1" fill="#fff"/></svg></span>
         <div style="line-height:1;"><div class="fg-brand-name">fairgate</div><div class="mono fg-brand-tag">intelligence applied</div></div>
       </div>
       <div class="fg-top-title fr" title="Sistema de Auditoria de Justiça em Dados de Crédito">Sistema de Auditoria de Justiça em Dados de Crédito</div>
