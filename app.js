@@ -21,8 +21,11 @@
     ready: false, step: 1, maxStep: 4,
     gate: "idle", imputed: false, reweighed: false, verdict: null,
     lambdaIdx: 0,
-    completed: loadProgress(), check: null, picked: null, tour: false, tutor: null,
+    completed: loadProgress(), check: null, picked: null, tour: false,
+    dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false },
   };
+  // áudio/voz fora do estado de render (persistem entre re-renders)
+  let _audio = null, _rec = null, _ttsStatus = null, _ptVoice = null;
   // computados no boot
   let P, raw, imp, pop, sample, tradeoffData, chosenIdx, rawSnap, policyHash;
 
@@ -113,16 +116,7 @@
     const t = root.querySelector('[data-act="openCheck"]'); if (t) t.focus(); // devolve o foco (C-2)
   }
 
-  // ── tutor LLM (3 camadas: /api/tutor → DeepSeek → offline determinístico) ──
-  const TUTOR_SEED = {
-    1: "Por que derivar sexo e idade<25 logo na ingestão, antes de qualquer modelo?",
-    2: "O que é 'completude representacional' e por que ela não é só % de não-nulos?",
-    3: "Como um contrato Pandera vira validação automatizada (PR-blocker) no pipeline?",
-    4: "No dado real o DI da sonda já passa cru — então por que o gate ainda bloqueia?",
-    5: "Por que imputar condicionando ao subgrupo e por que SMOTE foi preterido?",
-    6: "Por que a re-medição pós-mitigação é obrigatória e não posso afrouxar o limite?",
-    7: "Por que o 'melhor' ponto na fronteira não é o que maximiza a justiça?",
-  };
+  // ── tutor (3 camadas: /api/tutor LLM → fallback do servidor → offline determinístico no cliente) ──
   function tutorOffline(n, q) {
     const s = (q || "").toLowerCase();
     if (/reweigh|kamiran|reponder|peso|smote|reamostr/.test(s))
@@ -141,33 +135,118 @@
       return "Derivamos sexo e idade<25 logo na ingestão para tornar o eixo de justiça auditável desde o início. O gate precisa de subgrupos nomeáveis (P7) para que o veredito seja legível — por isso idade vira faixa (<25) e não contínua.";
     return "O fairgate mede qualidade e justiça na ingestão e BLOQUEIA o dataset enviesado antes do treino. Pergunte sobre as 3 métricas de DQ, as 2 mitigações (imputação estratificada, Kamiran–Calders), o contrato Pandera, o gate ou o trade-off acurácia × justiça.";
   }
-  function openTutor(n) { set({ tutor: { q: TUTOR_SEED[n] || "", answer: null, loading: false, source: null, station: n } }); }
-  function closeTutor() { S.tutor = null; render(); const t = root.querySelector('[data-act="openTutor"]'); if (t) t.focus(); }
-  async function sendTutor(q) {
-    q = (q || "").trim();
-    if (!q || !S.tutor || S.tutor.loading) return;
-    const m = T.get(S.tutor.station);
-    S.tutor.q = q; S.tutor.loading = true; S.tutor.answer = null; render();
-    let answer, source;
+  // ── dock conversacional + voz (porte do tutor do Vitaliza) ──
+  const DOCK_WELCOME = "Oi! Eu sou o tutor do fairgate. Posso explicar qualquer fase — qualidade de dados, viés, mitigação, o gate de fairness, o trade-off — por texto ou por voz. Pergunte, fale pelo microfone, ou toque em \"explicar esta fase\".";
+  const DOCK_SUGGEST = ["O que esta fase mostra?", "Por que o gate bloqueia se o DI já passa cru?", "Por que SMOTE foi preterido?"];
+
+  function setDock(patch) {
+    const inp = root.querySelector(".fg-dock-input"); if (inp) S.dock.input = inp.value;
+    Object.assign(S.dock, patch); render();
+  }
+  function ensureWelcome() { if (S.dock.messages.length === 0) S.dock.messages.push({ role: "assistant", content: DOCK_WELCOME }); }
+  function scrollDock() { const b = root.querySelector(".fg-dock-msgs"); if (b) b.scrollTop = b.scrollHeight; }
+  function openDock(seedQ) {
+    S.dock.open = true; ensureWelcome(); render();
+    const inp = root.querySelector(".fg-dock-input"); if (inp) { if (seedQ) inp.value = seedQ; inp.focus(); }
+    scrollDock();
+  }
+  function closeDock() { stopSpeak(); stopMic(); S.dock.open = false; render(); }
+  function toggleSpeak() { S.dock.speakOn = !S.dock.speakOn; if (!S.dock.speakOn) stopSpeak(); render(); }
+
+  async function sendDock(text) {
+    const q = (text || "").trim();
+    if (!q || S.dock.loading) return;
+    S.dock.messages.push({ role: "user", content: q });
+    S.dock.input = ""; S.dock.loading = true; render(); scrollDock();
+    const m = T.get(S.step);
+    let answer;
     try {
-      const r = await fetch("/api/tutor", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, station: m ? `${m.n} · ${m.name}` : "" }),
-      });
+      const hist = S.dock.messages.filter((x) => x.role === "user" || x.role === "assistant");
+      const r = await fetch("/api/tutor", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: hist, station: m ? `${m.n} · ${m.name}` : "" }) });
       if (!r.ok) throw new Error("http " + r.status);
-      const data = await r.json();
-      answer = data.answer; source = data.source || "llm";
-    } catch (e) {
-      // CAMADA 3 — offline determinístico no cliente (sem servidor / file://)
-      answer = tutorOffline(S.tutor.station, q); source = "offline";
+      const d = await r.json(); answer = d.answer || tutorOffline(S.step, q);
+    } catch (e) { answer = tutorOffline(S.step, q); }   // camada 3: offline determinístico no cliente
+    S.dock.loading = false; S.dock.messages.push({ role: "assistant", content: answer }); render(); scrollDock();
+    if (S.dock.speakOn) speak(answer);
+  }
+  function explainStation(n) {
+    const m = T.get(n); if (!m) return;
+    S.dock.open = true; ensureWelcome(); S.dock.speakOn = true;
+    sendDock(`Explique de forma clara a fase "${m.name}" (estação ${m.n} de 7) do fairgate: o que ela mostra, por que importa e a conexão com o viés/justiça.`);
+  }
+
+  // ---- voz (porte de use-speak): TTS de servidor (/api/tts) + fallback do navegador ----
+  async function getTtsStatus() {
+    if (_ttsStatus !== null) return _ttsStatus;
+    try { const r = await fetch("/api/tts"); _ttsStatus = r.ok ? await r.json() : { serverVoiceAvailable: false }; }
+    catch (e) { _ttsStatus = { serverVoiceAvailable: false }; }
+    return _ttsStatus;
+  }
+  function pickPtVoice() {
+    if (typeof speechSynthesis === "undefined") return null;
+    const voices = speechSynthesis.getVoices(); if (!voices.length) return null;
+    const pt = voices.filter((v) => /^pt([-_]?br)?/i.test(v.lang)); const pool = pt.length ? pt : voices;
+    const score = (v) => { const n = (v.name || "").toLowerCase(); let s = 0; if (/natural|neural|online|premium|enhanced/.test(n)) s += 9; if (/google/.test(n)) s += 5; if (/pt[-_]?br/i.test(v.lang)) s += 3; if (v.localService === false) s += 2; return s; };
+    return [...pool].sort((a, b) => score(b) - score(a))[0] || null;
+  }
+  function stopSpeak() {
+    try { if (_audio) { _audio.pause(); _audio.src = ""; _audio = null; } } catch (e) {}
+    try { if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel(); } catch (e) {}
+    S.dock.playing = false;
+  }
+  function speakBrowser(text) {
+    try {
+      if (typeof speechSynthesis === "undefined") return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = _ptVoice || pickPtVoice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "pt-BR";
+      u.rate = 1.0; u.pitch = 1.0;
+      u.onend = () => { S.dock.playing = false; render(); };
+      u.onerror = () => { S.dock.playing = false; };
+      S.dock.playing = true; speechSynthesis.speak(u);
+    } catch (e) { S.dock.playing = false; }
+  }
+  async function speak(text) {
+    stopSpeak();
+    const st = await getTtsStatus();
+    if (st && st.serverVoiceAvailable) {
+      try {
+        setDock({ ttsLoading: true });
+        const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        const ct = r.headers.get("Content-Type") || "";
+        if (r.ok && ct.indexOf("audio") === 0) {
+          const blob = await r.blob(); const url = URL.createObjectURL(blob);
+          const a = new Audio(url); _audio = a;
+          a.onended = () => { URL.revokeObjectURL(url); if (_audio === a) _audio = null; S.dock.playing = false; render(); };
+          a.onerror = () => { URL.revokeObjectURL(url); S.dock.playing = false; render(); };
+          S.dock.ttsLoading = false; S.dock.playing = true; render();
+          await a.play(); return;
+        }
+        S.dock.ttsLoading = false;
+      } catch (e) { S.dock.ttsLoading = false; }
     }
-    if (S.tutor) { S.tutor.loading = false; S.tutor.answer = answer; S.tutor.source = source; render(); }
+    speakBrowser(text); render();
+  }
+
+  // ---- mic (SpeechRecognition pt-BR) ----
+  function stopMic() { try { if (_rec) _rec.stop(); } catch (e) {} S.dock.listening = false; }
+  function toggleMic() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    if (S.dock.listening) { stopMic(); render(); return; }
+    const rec = new SR(); rec.lang = "pt-BR"; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    let finalText = "";
+    rec.onresult = (e) => { let interim = ""; for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t; else interim += t; } const inp = root.querySelector(".fg-dock-input"); if (inp) inp.value = finalText || interim; };
+    rec.onerror = () => { S.dock.listening = false; render(); };
+    rec.onend = () => { S.dock.listening = false; render(); if (finalText.trim()) sendDock(finalText); };
+    _rec = rec; S.dock.listening = true; render();
+    try { rec.start(); } catch (e) { S.dock.listening = false; render(); }
   }
 
   // ── ações (delegação) ─────────────────────────────────────────────────────
   root.addEventListener("click", (ev) => {
     if (S.check != null && ev.target.classList && ev.target.classList.contains("fg-modal-veil")) { closeCheck(false); return; }
-    if (S.tutor != null && ev.target.classList && ev.target.classList.contains("fg-modal-veil")) { closeTutor(); return; }
     const el = ev.target.closest("[data-act]");
     if (!el) return;
     const act = el.getAttribute("data-act");
@@ -188,9 +267,15 @@
       case "closeCheck": closeCheck(false); break;
       case "closeNext": closeCheck(true); break;
       case "tour": startTour(); break;
-      case "openTutor": openTutor(n); break;
-      case "tutorSend": { const ta = root.querySelector(".fg-tutor-input"); sendTutor(ta ? ta.value : ""); break; }
-      case "closeTutor": closeTutor(); break;
+      case "openDock": openDock(el.getAttribute("data-q") || ""); break;
+      case "closeDock": closeDock(); break;
+      case "dockSend": { const ta = root.querySelector(".fg-dock-input"); sendDock(ta ? ta.value : ""); break; }
+      case "dockSuggest": sendDock(el.getAttribute("data-q") || ""); break;
+      case "toggleSpeak": toggleSpeak(); break;
+      case "toggleMic": toggleMic(); break;
+      case "dockStop": stopSpeak(); render(); break;
+      case "explain": explainStation(n); break;
+      case "speakMsg": { const j = +el.getAttribute("data-i"); const msg = S.dock.messages[j]; if (msg) { speak(msg.content); } break; }
       case "print": window.print(); break;
       case "noop": break;
     }
@@ -204,8 +289,9 @@
   });
 
   document.addEventListener("keydown", (ev) => {
-    if (S.check == null && S.tutor == null) return;
-    if (ev.key === "Escape") { if (S.check != null) closeCheck(false); else closeTutor(); return; }
+    if (S.dock.open && ev.key === "Escape" && S.check == null) { closeDock(); return; }
+    if (S.check == null) return;
+    if (ev.key === "Escape") { closeCheck(false); return; }
     if (ev.key === "Tab") {
       const modal = root.querySelector(".fg-modal");
       if (!modal) return;
@@ -238,9 +324,8 @@
     if (!S.ready) return;
     root.innerHTML = `<div class="fg-app">${backdrop()}${topbar()}
       <div class="fg-body">${railLeft()}${stage()}${railRight()}</div>
-      ${footer()}${S.check != null ? checkModal() : ""}${S.tutor != null ? tutorModal() : ""}</div>`;
+      ${footer()}${S.check != null ? checkModal() : ""}${dockUI()}</div>`;
     if (S.check != null) { const md = root.querySelector(".fg-modal"); if (md) md.focus(); }
-    else if (S.tutor != null && !S.tutor.answer && !S.tutor.loading) { const inp = root.querySelector(".fg-tutor-input"); if (inp) inp.focus(); }
   }
 
   function backdrop() {
@@ -795,7 +880,8 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="font-size:12.5px; color:rgba(255,255,255,.72); margin-top:6px; font-weight:300; line-height:1.4;">${m.pedTitle}</div>
         <div style="font-size:11.5px; color:rgba(255,255,255,.72); margin-top:7px; line-height:1.5; font-weight:300;"><span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:#8FA6BC;">OBJETIVO</span><br>${m.objective}</div>
         <button class="fg-btn fg-btn-sm ${done ? "fg-btn-applied" : ""}" data-act="openCheck" data-n="${m.n}" style="margin-top:11px; width:100%;">${done ? "✓ check respondido · rever" : "Responder o check ▸"}</button>
-        <button class="fg-btn-ghost" data-act="openTutor" data-n="${m.n}" style="margin-top:8px; width:100%; padding:8px; display:flex; align-items:center; justify-content:center; gap:6px;">🎓 Pergunte ao tutor</button>
+        <button class="fg-btn-ghost" data-act="openDock" style="margin-top:8px; width:100%; padding:8px; display:flex; align-items:center; justify-content:center; gap:6px;">🎓 Pergunte ao tutor</button>
+        <button class="fg-btn-ghost" data-act="explain" data-n="${m.n}" style="margin-top:6px; width:100%; padding:8px; display:flex; align-items:center; justify-content:center; gap:6px;">🔊 Explicar esta fase</button>
       </div>
       <div class="fg-ped-list">
         ${guideBlock}
@@ -876,27 +962,56 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
     </div>`;
   }
 
-  // ── tutor modal ───────────────────────────────────────────────────────────
-  function tutorModal() {
-    const t = S.tutor; const m = T.get(t.station);
-    const srcBadge = t.source === "llm" ? "🤖 DeepSeek (ao vivo)" : t.source === "fallback" ? "⚙️ determinístico (servidor)" : "⚙️ determinístico (offline)";
-    // SEGURANÇA: esc() (escapa & e <) DEVE rodar antes da substituição \n→<br>. Não reordenar.
+  // ── dock UI (rodapé, abrível a qualquer momento) ──────────────────────────
+  function dockUI() {
+    const d = S.dock;
     const esc = (x) => (x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    return `<div class="fg-modal-veil">
-      <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-tutor-title" tabindex="-1">
-        <div class="mono" style="font-size:9.5px; letter-spacing:.16em; color:#14B8A6;">🎓 TUTOR · ${m ? "ESTAÇÃO " + ("0" + m.n).slice(-2) + " · " + m.bloom.toUpperCase() : "FAIRGATE"}</div>
-        <h2 id="fg-tutor-title" class="fr" style="font-weight:300; font-size:19px; line-height:1.3; color:#fff; margin:10px 0 12px;">Pergunte ao tutor — ele <em style="color:#14B8A6;">ensina</em>, não decide o veredito (P3)</h2>
-        <textarea class="fg-tutor-input" rows="3" placeholder="Pergunte sobre DQ, viés, mitigação, validação, o trade-off…">${esc(t.q)}</textarea>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:10px;">
-          <button class="fg-btn-ghost" data-act="closeTutor">Fechar</button>
-          <button class="fg-btn fg-btn-sm ${t.loading ? "muted" : ""}" data-act="tutorSend" ${t.loading ? "disabled" : ""}>${t.loading ? "Pensando…" : "Perguntar ▸"}</button>
+    if (!d.open) {
+      return `<button class="fg-fab" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz">
+        <span class="fg-fab-ic">🎓</span><span class="fg-fab-tx">Tutor</span></button>`;
+    }
+    const m = T.get(S.step);
+    // SEGURANÇA: esc() (& e <) antes da substituição \n→<br>. Não reordenar.
+    const fmt = (c) => esc(c).replace(/\n/g, "<br>");
+    const msgs = d.messages.map((mm, i) => mm.role === "user"
+      ? `<div class="fg-msg user"><div class="fg-bub">${fmt(mm.content)}</div></div>`
+      : `<div class="fg-msg bot"><div class="fg-bub">${fmt(mm.content)}</div><button class="fg-msg-listen" data-act="speakMsg" data-i="${i}" title="Ouvir" aria-label="Ouvir esta resposta">🔊</button></div>`).join("");
+    const sugg = d.messages.length <= 1
+      ? `<div class="fg-dock-sugg">${DOCK_SUGGEST.map((s) => `<button class="fg-chip-sugg" data-act="dockSuggest" data-q="${esc(s).replace(/"/g, "&quot;")}">${esc(s)}</button>`).join("")}</div>` : "";
+    const micOn = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const statusTx = d.playing ? "🔉 falando…" : (d.ttsLoading ? "sintetizando voz…" : "ensina — nunca altera o veredito (P3)");
+    return `<section class="fg-dock" role="dialog" aria-label="Tutor do fairgate">
+      <div class="fg-dock-head">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+          <span class="fg-dock-ic">🎓</span>
+          <div style="min-width:0;">
+            <div class="mono" style="font-size:9px; letter-spacing:.14em; color:#2BC4A8;">TUTOR · ${m ? "FASE " + ("0" + m.n).slice(-2) : "FAIRGATE"}</div>
+            <div style="font-size:10px; color:#7C91A5;">${statusTx}</div>
+          </div>
         </div>
-        ${t.loading ? `<div style="margin-top:14px; display:flex; align-items:center; gap:10px; color:#8FA6BC;"><div class="fg-spinner" style="width:18px;height:18px;border-width:2px;"></div><span class="mono" style="font-size:10px; letter-spacing:.1em;">consultando o tutor…</span></div>` : ""}
-        ${t.answer ? `<div class="fg-tutor-answer"><div class="fg-tutor-src mono">${srcBadge}</div><div>${esc(t.answer).replace(/\n/g, "<br>")}</div></div>` : ""}
-        <div class="mono" style="font-size:8.5px; color:#46607A; margin-top:12px; letter-spacing:.04em;">offline funciona (resposta determinística) · online enriquece via DeepSeek · o tutor nunca altera o gate (P3)</div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button class="fg-dock-btn ${d.speakOn ? "on" : ""}" data-act="toggleSpeak" title="Ler as respostas em voz" aria-pressed="${d.speakOn}">${d.speakOn ? "🔊" : "🔇"}</button>
+          ${d.playing ? `<button class="fg-dock-btn" data-act="dockStop" title="Parar a voz" aria-label="Parar a voz">⏹</button>` : ""}
+          <button class="fg-dock-btn" data-act="explain" data-n="${S.step}" title="Explicar esta fase em voz" aria-label="Explicar esta fase em voz">💬</button>
+          <button class="fg-dock-btn" data-act="closeDock" title="Fechar" aria-label="Fechar o tutor">✕</button>
+        </div>
       </div>
-    </div>`;
+      <div class="fg-dock-msgs">${msgs}${d.loading ? `<div class="fg-msg bot"><div class="fg-bub fg-typing"><span></span><span></span><span></span></div></div>` : ""}</div>
+      ${sugg}
+      <div class="fg-dock-input-row">
+        ${micOn ? `<button class="fg-dock-btn mic ${d.listening ? "on" : ""}" data-act="toggleMic" title="${d.listening ? "Ouvindo…" : "Falar pelo microfone"}" aria-label="Falar pelo microfone">${d.listening ? "●" : "🎙"}</button>` : ""}
+        <input class="fg-dock-input" type="text" placeholder="Pergunte ou fale…" value="${esc(d.input || "")}" aria-label="Sua pergunta ao tutor" onkeydown="if(event.key==='Enter'){event.preventDefault();var b=this.parentNode.querySelector('.fg-dock-send'); if(b)b.click();}">
+        <button class="fg-dock-send ${d.loading ? "muted" : ""}" data-act="dockSend" ${d.loading ? "disabled" : ""} aria-label="Enviar pergunta">▸</button>
+      </div>
+      <div class="mono" style="font-size:8px; color:#46607A; padding:0 4px 2px; letter-spacing:.03em;">offline → voz do navegador · online → voz natural pt-BR (Google/ElevenLabs) · o tutor nunca toca o gate (P3)</div>
+    </section>`;
   }
+
+  // priming das vozes do navegador (fallback de voz) + status do TTS de servidor
+  if (typeof speechSynthesis !== "undefined") {
+    try { _ptVoice = pickPtVoice(); speechSynthesis.addEventListener("voiceschanged", () => { _ptVoice = pickPtVoice() || _ptVoice; }); } catch (e) {}
+  }
+  getTtsStatus(); // pré-aquece o status (cacheado)
 
   // ── arranque ───────────────────────────────────────────────────────────────
   if (E && window.GERMAN_CREDIT) {

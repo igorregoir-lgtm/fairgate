@@ -87,9 +87,17 @@ module.exports = async (req, res) => {
   if (rateLimited(ip)) { res.statusCode = 429; return res.end(JSON.stringify({ error: "muitas requisições — tente em instantes" })); }
 
   const body = await readBody(req);
-  const question = String(body.question || "").slice(0, 1200);
+  // conversacional: aceita histórico {messages:[{role,content}]} (como o Vitaliza) OU {question} (single-shot)
+  const history = Array.isArray(body.messages)
+    ? body.messages
+        .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .slice(-12)
+        .map((m) => ({ role: m.role, content: String(m.content).slice(0, 1500) }))
+    : null;
+  const lastUser = history ? history.filter((m) => m.role === "user").pop() : null;
+  const question = (lastUser ? lastUser.content : String(body.question || "")).slice(0, 1200);
   // strip de colchetes/chaves p/ reduzir superfície de prompt-injection estrutural (P3 já é enforced em Python)
-  const station = body.station ? String(body.station).slice(0, 80).replace(/[\[\]{}]/g, "") : "";
+  const station = (body.station || body.screen) ? String(body.station || body.screen).slice(0, 80).replace(/[\[\]{}]/g, "") : "";
   if (!question.trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: "pergunta vazia" })); }
 
   if (process.env.DEEPSEEK_API_KEY && process.env.OPENROUTER_API_KEY)
@@ -115,8 +123,8 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: (station ? `[Estação atual: ${station}] ` : "") + question },
+          { role: "system", content: SYSTEM_PROMPT + (station ? ` Contexto: o aprendiz está na estação "${station}".` : "") },
+          ...(history && history.length ? history : [{ role: "user", content: (station ? `[Estação atual: ${station}] ` : "") + question }]),
         ],
         temperature: 0.3,
         max_tokens: 480,
