@@ -67,7 +67,9 @@ module.exports = async (req, res) => {
   const station = body.station ? String(body.station).slice(0, 80) : "";
   if (!question.trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: "pergunta vazia" })); }
 
-  const key = process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY;
+  // sanitiza: remove BOM/espaços/quebras que possam ter entrado no valor da env var
+  const rawKey = process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY;
+  const key = rawKey ? rawKey.replace(/[^\x21-\x7E]/g, "") : rawKey;
   if (!key) {
     res.statusCode = 200;
     return res.end(JSON.stringify({ answer: deterministicFallback(question, station), source: "fallback", reason: "sem chave no servidor" }));
