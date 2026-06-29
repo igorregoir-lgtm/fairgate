@@ -21,7 +21,7 @@
     ready: false, step: 1, maxStep: 4,
     gate: "idle", imputed: false, reweighed: false, verdict: null,
     lambdaIdx: 0,
-    completed: loadProgress(), check: null, picked: null, tour: false,
+    completed: loadProgress(), check: null, picked: null, tour: false, defShown: true,
     dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false },
   };
   // áudio/voz fora do estado de render (persistem entre re-renders)
@@ -138,7 +138,7 @@
     return "O fairgate mede qualidade e justiça na ingestão e BLOQUEIA o dataset enviesado antes do treino. Pergunte sobre as 3 métricas de DQ, as 2 mitigações (imputação estratificada, Kamiran–Calders), o contrato Pandera, o gate ou o trade-off acurácia × justiça.";
   }
   // ── dock conversacional + voz (porte do tutor do Vitaliza) ──
-  const DOCK_WELCOME = "Oi! Eu sou o tutor do fairgate. Posso explicar qualquer fase — qualidade de dados, viés, mitigação, o gate de fairness, o trade-off — por texto ou por voz. Pergunte, fale pelo microfone, ou toque em \"explicar esta fase\".";
+  const DOCK_WELCOME = "Oi! Sou o tutor do fairgate, aqui pra explicar tudo em palavras simples. A ideia do sistema é simples: antes de uma inteligência artificial aprender a decidir quem recebe crédito, a gente confere se os dados tratam todo mundo de forma justa — e barra os dados se houver sinal de injustiça. Pode perguntar qualquer coisa, do seu jeito, por texto ou por voz, ou tocar em \"explicar esta fase\".";
   const DOCK_SUGGEST = ["O que esta fase mostra?", "Por que o gate bloqueia se o DI já passa cru?", "Por que SMOTE foi preterido?"];
 
   function setDock(patch) {
@@ -298,6 +298,7 @@
     const n = +el.getAttribute("data-n");
     const i = +el.getAttribute("data-i");
     switch (act) {
+      case "closeDef": S.defShown = false; render(); break;
       case "go": go(n); break;
       case "reset": reset(); break;
       case "di": setDi(parseFloat(el.getAttribute("data-d"))); break;
@@ -367,7 +368,7 @@
   // ── render ─────────────────────────────────────────────────────────────────
   function render() {
     if (!S.ready) return;
-    root.innerHTML = `<div class="fg-app">${backdrop()}${topbar()}
+    root.innerHTML = `<div class="fg-app">${backdrop()}${topbar()}${defBanner()}
       <div class="fg-body">${railLeft()}${stage()}${railRight()}</div>
       ${footer()}${S.check != null ? checkModal() : ""}${dockUI()}</div>`;
     if (S.check != null) { const md = root.querySelector(".fg-modal"); if (md) md.focus(); }
@@ -390,6 +391,15 @@
   }
 
   // ── top bar ─────────────────────────────────────────────────────────────
+  // banner de definição (plain language) — "o que é o fairgate", no topo, dispensável
+  function defBanner() {
+    if (!S.defShown) return "";
+    return `<section class="fg-defbanner" aria-label="O que é o fairgate">
+      <span class="fg-defbanner-ic" aria-hidden="true"><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='4.6'/><circle cx='12' cy='12' r='1.1' fill='currentColor' stroke='none'/></svg></span>
+      <p class="fg-defbanner-tx"><b>O que é o fairgate?</b> Antes de uma <b>inteligência artificial</b> aprender a decidir quem recebe <b>crédito</b>, ele confere se os <b>dados são justos com todos os grupos de pessoas</b> (sem favorecer nem prejudicar por <b>idade</b>, <b>sexo</b> etc.) e <b>bloqueia os dados injustos</b> em vez de só avisar.</p>
+      <button class="fg-defbanner-close" data-act="closeDef" aria-label="Fechar a definição" title="Fechar">×</button>
+    </section>`;
+  }
   function topbar() {
     const srcReal = S.source === "real";
     return `<header class="fg-top">
@@ -402,7 +412,7 @@
           <div style="line-height:1;"><div class="fg-brand-name">fairgate</div><div class="mono fg-brand-tag">intelligence applied</div></div>
         </div>
         <div class="fg-divider-v"></div>
-        <div class="mono fg-subtitle">Console do Operador<span style="color:#8A9AAB;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>data contract executável que bloqueia o treino enviesado</div>
+        <div class="mono fg-subtitle">Console do Operador<span style="color:#8A9AAB;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>barra dados de crédito injustos antes de a IA aprender</div>
       </div>
       <div class="fg-top-right">
         <div class="fg-seg" role="group" aria-label="Fonte de dados">
