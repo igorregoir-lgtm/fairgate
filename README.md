@@ -3,7 +3,9 @@
 **Data contract executável que bloqueia o treino enviesado.** Artefato Tecnológico do
 **Inteli MBA · Módulo 2 (Eletiva Data Engineering)**, no ecossistema **allla.ai · intelligence applied**.
 
-> **🔗 Site publicado:** https://fairgate-eight.vercel.app
+> **🔗 Console (L1):** https://fairgate-eight.vercel.app
+> **📊 Slides graded (3, printável):** https://fairgate-eight.vercel.app/slides/
+> **📓 Evidência (L2 · Marimo):** https://fairgate-eight.vercel.app/notebook/fairgate.html
 > **💻 Código (GitHub):** https://github.com/igorregoir-lgtm/fairgate
 
 ## Arquitetura em 3 camadas
