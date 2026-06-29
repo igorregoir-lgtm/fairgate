@@ -69,11 +69,21 @@ Artefatos/
   HIGH/MEDIUM/LOW válidos corrigidos — guarda modal, fallback base vazia, a11y: foco/teclado/landmarks/SVG/
   contraste). Gap pedagógico corrigido: `instruction` (guide-rail) agora surfaçada + adaptativa à fonte.
 
-## Estado: convergido (nível tesla/god-mode)
-Arco real verificado (BLOCKED→APPROVED+certificado), determinístico, testado, documentado, revisado, acessível.
-## Pendências (opcionais)
-- Screenshot do preview travou nesta sessão (limitação da ferramenta — validado por medição/eval e 1º screenshot).
-- Deploy estático (Vercel/qualquer host) — sob demanda do usuário.
+## Retomada (decisões consolidadas) — STATUS
+- **Rubrica primeiro** ✅ lida (Barema Excelência: DQ 25% · Mitigação 30% · Validation 30% · Formatação 15%);
+  mapa em `docs/RUBRICA.md`; 3 inconsistências dos slides flagradas (jovem 19%→14,9% · pesos · limites).
+- **Fonte única** ✅ `policy.yaml` → `data/policy.js` (L1) + leitura direta (L2); teste de cross-check no `node --test`.
+- **L2 Marimo** ✅ `notebook/fairgate.py` (EDA + Pandera + gate + mitigação) + `crosscheck.py` (L1==L2 **bit-idêntico**)
+  + `js_golden.mjs` + `fairgate.html` exportado + venv.
+- **Tutor 3 camadas** ✅ `api/tutor.js` (DeepSeek **ao vivo** server-side + fallback) + cliente (offline). P3 respeitado.
+- **GitHub** ✅ https://github.com/igorregoir-lgtm/fairgate · **Vercel** ✅ https://fairgate-eight.vercel.app (tutor LLM live).
+- **Fix λ** ✅ minPassLambda=0.30 (harness + golden).
+
+## Estado: convergido (nível tesla/god-mode), dual-layer + tutor + repo público
+## Pendências (recomendadas)
+- **Rotacionar a chave DeepSeek** (foi exposta) e atualizar a env var na Vercel.
+- **Alinhar os 3 slides** ao dado real (14,9%) e aos pesos da rubrica (25/30/30/15) — ver `docs/RUBRICA.md`.
+- Screenshot do preview travou nesta sessão (limitação da ferramenta — validado por medição/eval).
 
 ## Honestidade (sem overclaim)
 - Dataset real, porém pequeno (1000); o probe é uma **sonda** (LogReg), não o modelo final.

@@ -4,6 +4,16 @@
 **Inteli MBA · Módulo 2 (Eletiva Data Engineering)**, no ecossistema **allla.ai · intelligence applied**.
 
 > **🔗 Site publicado:** https://fairgate-eight.vercel.app
+> **💻 Código (GitHub):** https://github.com/igorregoir-lgtm/fairgate
+
+## Arquitetura em 3 camadas
+- **L1 · Console (JS)** — a tela interativa "wow" (`index.html` + `app.js` + `fairgate-engine.js`), abre offline.
+- **L2 · Evidência (Python/Marimo)** — `notebook/fairgate.py`: EDA + contrato Pandera + gate + mitigação sobre o
+  CSV real, como **prova formal**. `notebook/crosscheck.py` prova que **L1 e L2 não divergem** (bit-idêntico).
+- **L3 · Tutor LLM** — `api/tutor.js` (serverless): DeepSeek **ao vivo** (chave só em env var no servidor) →
+  fallback determinístico no servidor → tutor offline determinístico no cliente. **Só ensina — nunca toca o veredito (P3).**
+
+> **Fonte única (P6):** `policy.yaml` + `german_credit_data.csv` governam L1 **e** L2. Nenhum número diverge.
 
 > **Tese:** o viés não é defeito do modelo — é defeito do **dado**. O fairgate é um *gate*
 > (cláusula suspensiva) que, na ingestão e **antes do treino**, mede qualidade e justiça sobre o
@@ -56,16 +66,33 @@ sintético-estresse o NA é proxy forte de idade e o **gate de fairness (DI) rep
 ## Estrutura
 ```
 index.html              # console (recria o protótipo Claude Design em DOM real)
-app.js                  # render + interação (substitui o DCLogic do protótipo)
+app.js                  # render + interação (substitui o DCLogic do protótipo) + tutor cliente (L3)
 fairgate-engine.js      # motor determinístico, sem deps (reusado do handoff + adaptado)
+policy.yaml             # FONTE ÚNICA dos limites (P6) — governa L1 e L2
 data/german-credit.js   # 1.000 linhas reais embutidas (geradas do CSV)
+data/policy.js          # policy.yaml -> window.FAIRGATE_POLICY (gerado)
+api/tutor.js            # L3 — endpoint serverless do tutor (DeepSeek server-side + fallback)
 trilha/missions.js      # 7 estações: Bloom + objetivo + scaffolding + check (fonte única)
 styles/fairgate.css     # console (tokens allla)
 styles/tokens/*.css     # design system allla (colors/fonts/typography/spacing)
-tests/engine.test.mjs   # testes do motor (arco, determinismo, métricas) — node --test
+notebook/fairgate.py    # L2 — evidência formal (Marimo): EDA + Pandera + gate + mitigação
+notebook/crosscheck.py  # prova L1==L2 (stdlib, sem deps) contra notebook/.golden.json
+notebook/js_golden.mjs  # gera o golden a partir do motor JS
+notebook/fairgate.html  # L2 exportado (evidência navegável)
+tests/engine.test.mjs   # testes do motor (arco, determinismo, fonte única) — node --test
 scripts/build-data.mjs  # CSV real -> data/german-credit.js
+scripts/build-policy.mjs# policy.yaml -> data/policy.js
 scripts/serve.mjs       # servidor estático mínimo p/ preview
-docs/                   # PLAN.md · SPEC.md · DECISIONS.md
+docs/                   # PLAN.md · SPEC.md · DECISIONS.md · RUBRICA.md
+```
+
+## L2 — evidência formal (Python)
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/Scripts/python.exe -r notebook/requirements.txt
+node notebook/js_golden.mjs                     # gera o golden do motor JS
+python notebook/crosscheck.py                   # prova L1==L2 (sem deps)
+.venv/Scripts/python -m marimo run notebook/fairgate.py   # notebook interativo
 ```
 
 ## Testes
