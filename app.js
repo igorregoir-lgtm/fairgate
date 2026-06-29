@@ -941,8 +941,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="font-size:12.5px; color:rgba(14, 31, 48,.72); margin-top:6px; font-weight:300; line-height:1.4;">${m.pedTitle}</div>
         <div style="font-size:11.5px; color:rgba(14, 31, 48,.72); margin-top:7px; line-height:1.5; font-weight:300;"><span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:#5B7691;">OBJETIVO</span><br>${m.objective}</div>
         <button class="fg-btn fg-btn-sm ${done ? "fg-btn-applied" : ""}" data-act="openCheck" data-n="${m.n}" style="margin-top:11px; width:100%;">${done ? "✓ check respondido · rever" : "Responder o check ▸"}</button>
-        <button class="fg-btn-ghost" data-act="openDock" style="margin-top:8px; width:100%; padding:8px; display:flex; align-items:center; justify-content:center; gap:6px;"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg> Pergunte ao tutor</button>
-        <button class="fg-btn-ghost" data-act="explain" data-n="${m.n}" style="margin-top:6px; width:100%; padding:8px; display:flex; align-items:center; justify-content:center; gap:6px;"><svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M11 5 6 9H2v6h4l5 4Z'/><path d='M15.5 8.5a5 5 0 0 1 0 7'/><path d='M19 5a9 9 0 0 1 0 14'/></svg> Explicar esta fase</button>
+        <button class="fg-foot-tutor" data-act="explain" data-n="${m.n}" style="width:100%; margin-top:11px; justify-content:center;" title="O tutor explica esta fase (por voz)"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>O Tutor Explica</span></button>
       </div>
       <div class="fg-ped-list">
         ${guideBlock}
@@ -987,7 +986,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="min-width:0;" role="status" aria-live="polite"><div class="fg-verdict-line">${verdictLine}</div><div class="fg-prov-line">${provLine}</div></div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <button class="fg-foot-tutor" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz"><span aria-hidden="true" style="font-size:15px; font-weight:700; line-height:1;">?</span><span>Tutor</span></button>
+        <button class="fg-foot-tutor" data-act="openDock" aria-label="Pergunte ao tutor (texto e voz)" title="Pergunte ao tutor — por texto ou voz"><span aria-hidden="true" style="font-size:15px; font-weight:700; line-height:1;">?</span><span>Pergunte ao Tutor</span></button>
         <button class="fg-btn ${pMuted ? "muted" : ""}" data-act="primary" ${pMuted ? "disabled" : ""}>${pLabel}</button>
       </div>
     </footer>`;
