@@ -25,7 +25,7 @@
     dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false },
   };
   // áudio/voz fora do estado de render (persistem entre re-renders)
-  let _audio = null, _rec = null, _ttsStatus = null, _ptVoice = null;
+  let _audio = null, _rec = null, _ttsStatus = null, _ptVoice = null, _speakToken = 0;
   // computados no boot
   let P, raw, imp, pop, sample, tradeoffData, chosenIdx, rawSnap, policyHash;
 
@@ -191,6 +191,7 @@
     return [...pool].sort((a, b) => score(b) - score(a))[0] || null;
   }
   function stopSpeak() {
+    _speakToken++;   // invalida qualquer fala chunkada em andamento
     try { if (_audio) { _audio.pause(); _audio.src = ""; _audio = null; } } catch (e) {}
     try { if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel(); } catch (e) {}
     S.dock.playing = false;
@@ -207,23 +208,58 @@
       S.dock.playing = true; speechSynthesis.speak(u);
     } catch (e) { S.dock.playing = false; }
   }
+  // quebra o texto em pedaços ~frase (<= max chars) p/ síntese progressiva
+  function splitForTTS(text, max) {
+    max = max || 170;
+    const clean = String(text).replace(/\s+/g, " ").trim();
+    const sents = clean.match(/[^.!?…]+[.!?…]+|\S[^.!?…]*$/g) || [clean];
+    const chunks = []; let cur = "";
+    for (const s of sents) {
+      const t = s.trim(); if (!t) continue;
+      if (cur && (cur + " " + t).length > max) { chunks.push(cur); cur = t; }
+      else cur = cur ? cur + " " + t : t;
+    }
+    if (cur) chunks.push(cur);
+    return chunks.length ? chunks : [clean];
+  }
+  async function ttsSynth(text) {
+    const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const ct = r.headers.get("Content-Type") || "";
+    return (r.ok && ct.indexOf("audio") === 0) ? await r.blob() : null;
+  }
+  // Fala progressiva: sintetiza por frase e toca a 1ª assim que pronta,
+  // pré-buscando as próximas em paralelo → início em ~1 frase curta (não no texto todo).
   async function speak(text) {
     stopSpeak();
+    const token = _speakToken;
     const st = await getTtsStatus();
+    if (token !== _speakToken) return;
     if (st && st.serverVoiceAvailable) {
+      const chunks = splitForTTS(text);
+      const jobs = new Array(chunks.length).fill(null);
+      const kick = (i) => { if (i < chunks.length && !jobs[i]) jobs[i] = ttsSynth(chunks[i]).catch(() => null); };
+      setDock({ ttsLoading: true });
+      kick(0); kick(1);                                  // arranca a 1ª e pré-busca a 2ª
       try {
-        setDock({ ttsLoading: true });
-        const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-        const ct = r.headers.get("Content-Type") || "";
-        if (r.ok && ct.indexOf("audio") === 0) {
-          const blob = await r.blob(); const url = URL.createObjectURL(blob);
+        for (let i = 0; i < chunks.length; i++) {
+          kick(i);
+          const blob = await jobs[i];
+          if (token !== _speakToken) return;             // cancelado por nova fala/stop
+          if (!blob) { if (i === 0) { speakBrowser(text); render(); } else { S.dock.playing = false; _audio = null; render(); } return; }
+          kick(i + 1);                                   // pré-busca a próxima enquanto esta toca
+          const url = URL.createObjectURL(blob);
           const a = new Audio(url); _audio = a;
-          a.onended = () => { URL.revokeObjectURL(url); if (_audio === a) _audio = null; S.dock.playing = false; render(); };
-          a.onerror = () => { URL.revokeObjectURL(url); S.dock.playing = false; render(); };
-          S.dock.ttsLoading = false; S.dock.playing = true; render();
-          await a.play(); return;
+          if (i === 0) { S.dock.ttsLoading = false; S.dock.playing = true; render(); }
+          await new Promise((res) => {
+            a.onended = () => { URL.revokeObjectURL(url); res(); };
+            a.onerror = () => { URL.revokeObjectURL(url); res(); };
+            a.onpause = () => res();                      // stopSpeak pausa → resolve p/ checar cancelamento
+            a.play().catch(() => res());
+          });
+          if (token !== _speakToken) { try { a.pause(); } catch (e) {} return; }
         }
-        S.dock.ttsLoading = false;
+        _audio = null; S.dock.playing = false; render();
+        return;
       } catch (e) { S.dock.ttsLoading = false; }
     }
     speakBrowser(text); render();
@@ -402,8 +438,10 @@
           <div class="fg-progress-track" role="progressbar" aria-valuenow="${S.maxStep}" aria-valuemin="0" aria-valuemax="7" aria-label="Estações destravadas"><div class="fg-progress-fill" style="width:${progressW};"></div></div>
           <div class="mono" style="font-size:10px; color:#0F9486; letter-spacing:.04em;">${S.maxStep}/7</div>
         </div>
-        <div class="mono" style="font-size:9px; color:#647D93; margin-top:8px; letter-spacing:.04em;">checks ✓ ${S.completed.size}/7</div>
-        <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour">${S.tour ? "● tour ativo · continuar" : "▸ fazer o tour guiado · ~" + T.EST_MIN + " min"}</button>
+        <div class="mono" style="font-size:9px; color:#5B7691; margin-top:8px; letter-spacing:.04em;">checks <span style="color:#0F9486; font-weight:600;">✓ ${S.completed.size}/7</span></div>
+        <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour">${S.tour
+          ? "<svg width='10' height='10' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6' fill='currentColor'/></svg>tour ativo · continuar"
+          : "<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M10.5 8.5 15.5 12l-5 3.5z' fill='currentColor' stroke='none'/></svg>fazer o tour guiado · ~" + T.EST_MIN + " min"}</button>
       </div>
       <div class="fg-stations">${rows}</div>
       <div class="fg-rail-foot">
@@ -922,11 +960,11 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
 
     return `<footer class="fg-foot" aria-label="Veredito do gate">
       <div style="display:flex; align-items:center; gap:16px; min-width:0;">
-        <button class="fg-foot-tutor" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>Tutor</span></button>
         <div class="fg-stamp" style="background:${stampBg}; color:${stampFg}; border:1px solid ${stampBd}; ${slam}">${stampText}</div>
         <div style="min-width:0;" role="status" aria-live="polite"><div class="fg-verdict-line">${verdictLine}</div><div class="fg-prov-line">${provLine}</div></div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+        <button class="fg-foot-tutor" data-act="openDock" aria-label="Abrir o tutor (texto e voz)" title="Tutor — pergunte por texto ou voz"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>Tutor</span></button>
         <button class="fg-btn ${pMuted ? "muted" : ""}" data-act="primary" ${pMuted ? "disabled" : ""}>${pLabel}</button>
       </div>
     </footer>`;
