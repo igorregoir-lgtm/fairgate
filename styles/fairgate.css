@@ -356,6 +356,20 @@ button { font-family: var(--fg-font-mono); }
 .fg-explain-input:focus { outline: none; border-color: rgba(20, 184, 166, .6); box-shadow: 0 0 0 3px rgba(20, 184, 166, .14); }
 .fg-explain-mine { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: rgba(45, 70, 99, .05); border: 1px solid rgba(45, 70, 99, .14); }
 .fg-explain-model { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: rgba(20, 184, 166, .08); border: 1px solid rgba(20, 184, 166, .28); }
+.fg-explain-react { margin-top: 11px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(135deg, rgba(15, 148, 134, .1), rgba(20, 184, 166, .14)); border: 1px solid rgba(20, 184, 166, .35); }
+.fg-explain-react:focus { outline: none; box-shadow: 0 0 0 3px rgba(20, 184, 166, .2); }
+
+/* ── A escalada — proveniência do aprendizado (espelho do dado) ───────────── */
+.fg-escalada { margin-top: 14px; padding: 12px 13px; border-radius: 10px; background: rgba(14, 31, 48, .025); border: 1px solid rgba(14, 31, 48, .08); }
+.fg-esc-eyebrow { font-size: 8.5px; letter-spacing: .13em; color: #5B7691; }
+.fg-esc-row { display: flex; gap: 5px; margin-top: 9px; }
+.fg-esc-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 3px 6px; border: 1px solid; border-radius: 7px; transition: transform .15s; }
+.fg-esc-cell:hover { transform: translateY(-2px); }
+.fg-esc-mk { font-size: 14px; font-weight: 700; line-height: 1; }
+.fg-esc-bloom { font-family: var(--fg-font-mono); font-size: 7.5px; letter-spacing: .02em; opacity: .85; text-align: center; line-height: 1.1; }
+.fg-esc-prov { font-size: 9.5px; letter-spacing: .02em; color: #4F6478; margin-top: 10px; line-height: 1.5; }
+.fg-esc-prov b { color: #0F9486; font-weight: 600; }
+.fg-esc-legend { font-size: 10px; color: #7A4A1E; margin-top: 6px; font-weight: 300; line-height: 1.4; }
 
 /* ── CTA socrático (tutoria dialógica · o tutor pergunta) ─────────────────── */
 .fg-socratic-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; border-radius: 999px; border: 1px solid rgba(20, 184, 166, .45); background: rgba(20, 184, 166, .06); color: #0B5F56; font-family: var(--fg-font-mono); font-size: 12px; font-weight: 600; letter-spacing: .04em; cursor: pointer; transition: transform .15s, background .2s, box-shadow .2s; }

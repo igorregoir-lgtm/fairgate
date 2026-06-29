@@ -191,9 +191,29 @@ falha-reverso que `[[criterio-de-pronto-e-gate-de-submissao]]` (ADR-013) proíbe
 autocomparação com texto **autorado estático**; (b) o socrático/reação é **formativo-only** e **nunca** muta
 `c.results` / `S.learnCert` / nenhum artefato emitido (P3 reafirmado para o caminho de ensino — provado por teste em
 `tests/trilha.test.mjs`); (c) texto livre do aluno **jamais** é avaliado por máquina nem alimenta o gate; (d) o
-comportamento **offline degrada para texto autorado** (`SOCRATIC.follow` / `CONSOLIDATION.modelAnswer`), nunca
+comportamento **offline degrada para texto autorado** — o socrático para a pista `SOCRATIC.follow`, e a reação à
+auto-explicação aponta o aprendiz à **resposta-modelo já exibida** (`CONSOLIDATION.modelAnswer`) — nunca
 raciocínio simulado pela tabela de 7 regex; (e) **proibido** copy de **+2σ / ganho medido / "IA que se adapta a você"**
 (sem instrumento de medição e com estado de sessão, qualquer claim de efeito é inverificável).
 **Consequência.** A defesa escrita contra a deriva "deixa o tutor corrigir". O texto livre do aluno é **escapado**
 antes de ir ao DOM (XSS). O gate de aprendizado continua sendo **só os 7/7** determinísticos com proveniência; a
 produção e o diálogo socrático são **momento de aprendizado**, não artefato — coerentes com `[[offline-local-first]]`.
+
+## ADR-017 — A escalada: proveniência de aprendizado (fecha o espelho dado↔aprendizado)
+**Contexto.** Auditoria adversarial god-mode (5 lentes, `docs/analysis/feynman-trilha.md`) classificou a feature
+em tier **Tesla (7,8/10)** e apontou o **único** gap para god-mode: o espelho dado↔aprendizado estava
+**geometricamente incompleto**. O `dataset_aprovado` carrega proveniência rica (policy #hash + seed + DI/DPD/AUC
+multidimensional), mas o `aprendizado_consolidado` derivava sua "proveniência" só de 3 questões. Pior: o estado
+`S.calib` — o mapa confiança×acerto coletado nos 7 checks formativos (`closeCheck`) — era **gravado e descartado**
+(lido em zero lugares). A coerência estrutural (a tese do artefato) ficava afirmada no texto, não demonstrada no objeto.
+**Decisão.** Renderizar **A Escalada** no certificado (ramo `c.passed` de `consolVerdict`): uma faixa de 7 células
+na ordem Bloom (Entender→Criar), cor por estado de calibração (acerto-confiante=teal; **erro de alta confiança=âmbar
+★**, marcando onde a hipercorreção mais fixa; erro=coral; não-respondida=cinza), reusando a paleta de `calibNote`.
+Mais 3 **métricas-espelho** das 3 métricas de DQ do dado: **cobertura** (estações/7), **calibração** (acertos vs
+erros de alta confiança), **Bloom máx** com acerto. É **leitura pura** de `S.calib` — nenhum dado novo, nenhuma rede.
+**Consequência.** O aprendiz vê, no instante após a Fronteira de Pareto (estação 7, justiça×acurácia), **o mesmo
+tipo de gráfico aplicado a si** (confiança×acerto subindo a escala Bloom) — a arbitragem dado↔aprendizado deixa de
+ser analogia e vira **mesma estrutura visual**: o passo que separa um artefato que *explica* o efeito de um que o
+*produz*. Invariante-seguro: sessão-only (zera no reload), CSP-estrito (sem inline), **P3** (só leitura no render —
+provado por teste-slice em `tests/trilha.test.mjs`). Não há gamificação (anti-template): a escalada **revela**
+coerência, não premia.

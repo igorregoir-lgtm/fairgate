@@ -29,6 +29,10 @@ const SYSTEM_PROMPT = [
 // Você provoca e dá pistas — não entrega a resposta, não avalia, não pontua (P3 segue inviolável).
 const SOCRATIC_ADDENDUM = " MODO SOCRÁTICO: o aprendiz acaba de RESPONDER a uma pergunta sua. NÃO entregue a resposta pronta. Em no máximo 3 frases: valide o que estiver correto, aponte gentilmente a lacuna, e devolva UMA pista ou pergunta de acompanhamento que o leve a completar o raciocínio sozinho. Você provoca e ensina — NUNCA avalia, não dá nota, não diz 'correto/errado' como veredito, não toca o gate (P3).";
 
+// Addendum do MODO REAÇÃO FORMATIVA: o aprendiz escreveu, com as próprias palavras, uma explicação
+// do fairgate. Você reage para ensinar — aponta o sólido e a lacuna — mas NUNCA dá nota (P3 intacto).
+const REACT_ADDENDUM = " MODO REAÇÃO FORMATIVA: o aprendiz escreveu, com as próprias palavras, uma explicação do fairgate ao final da trilha. Reaja em no máximo 3 frases: comece pelo que está SÓLIDO, aponte a principal LACUNA, e feche com uma frase que o ajude a completá-la. NUNCA dê nota, NUNCA diga 'aprovado/reprovado/correto' como veredito, NUNCA avalie — você só ensina e devolve a reflexão (P3). Não repita a explicação dele; reaja a ela.";
+
 function readBody(req) {
   return new Promise((resolve) => {
     if (req.body) {
@@ -104,7 +108,7 @@ module.exports = async (req, res) => {
   const question = (lastUser ? lastUser.content : String(body.question || "")).slice(0, 1200);
   // strip de colchetes/chaves p/ reduzir superfície de prompt-injection estrutural (P3 já é enforced em Python)
   const station = (body.station || body.screen) ? String(body.station || body.screen).slice(0, 80).replace(/[\[\]{}]/g, "") : "";
-  const socratic = body.mode === "socratic";
+  const mode = body.mode === "socratic" ? "socratic" : body.mode === "react" ? "react" : null;
   if (!question.trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: "pergunta vazia" })); }
 
   if (process.env.DEEPSEEK_API_KEY && process.env.OPENROUTER_API_KEY)
@@ -130,7 +134,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + (station ? ` Contexto: o aprendiz está na estação "${station}".` : "") + (socratic ? SOCRATIC_ADDENDUM : "") },
+          { role: "system", content: SYSTEM_PROMPT + (station ? ` Contexto: o aprendiz está na estação "${station}".` : "") + (mode === "socratic" ? SOCRATIC_ADDENDUM : mode === "react" ? REACT_ADDENDUM : "") },
           ...(history && history.length ? history : [{ role: "user", content: (station ? `[Estação atual: ${station}] ` : "") + question }]),
         ],
         temperature: 0.3,

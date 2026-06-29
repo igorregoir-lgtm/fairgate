@@ -45,6 +45,9 @@
   const pct = (x) => (x * 100).toFixed(1) + "%";
   const pp = (x) => (x * 100).toFixed(1);
   const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  // escape de HTML único e completo (& < > " ') — usado em todo texto livre/dinâmico que entra via innerHTML.
+  // NÃO reordenar quando seguido de \n→<br>: o esc precisa vir ANTES da troca por <br>.
+  const escHtml = (x) => (x == null ? "" : String(x)).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
   // ── boot ─────────────────────────────────────────────────────────────────
   function boot() {
@@ -86,6 +89,7 @@
     set({ gate: "running" });
     clearTimeout(gateTimer);
     gateTimer = setTimeout(() => {
+      if (S.gate !== "running") return;   // fonte/policy trocou no meio — descarta veredito-fantasma
       const c = current();
       const v = E.runGate(c.rows, P, { weights: c.weights, imputed: c.imputed, seed: S.seed, source: S.source });
       const ok = v.status === "PASS";
@@ -97,11 +101,12 @@
   }
   function applyImpute() { set({ imputed: true, gate: "idle", verdict: null }); }
   function applyReweigh() { set({ reweighed: true, gate: "idle", verdict: null, maxStep: Math.max(S.maxStep, 6), lambdaIdx: chosenIdx }); }
-  function reset() { set({ imputed: false, reweighed: false, gate: "idle", verdict: null, maxStep: 4, step: 1, lambdaIdx: chosenIdx }); }
-  function changePolicy(patch) { Object.assign(S, patch, { gate: "idle", imputed: false, reweighed: false, verdict: null, maxStep: 4 }); if (S.step > 4) S.step = 4; boot(); }
+  function reset() { clearTimeout(gateTimer); set({ imputed: false, reweighed: false, gate: "idle", verdict: null, maxStep: 4, step: 1, lambdaIdx: chosenIdx }); }
+  function changePolicy(patch) { clearTimeout(gateTimer); Object.assign(S, patch, { gate: "idle", imputed: false, reweighed: false, verdict: null, maxStep: 4 }); if (S.step > 4) S.step = 4; boot(); }
   function setDi(d) { changePolicy({ diThreshold: clamp(+(S.diThreshold + d).toFixed(2), 0.50, 0.95) }); }
   function switchSource(src) {
     if (src === S.source) return;
+    clearTimeout(gateTimer);
     Object.assign(S, { source: src, gate: "idle", imputed: false, reweighed: false, verdict: null, maxStep: 4, step: 1 });
     boot();
   }
@@ -215,10 +220,9 @@
   const DOCK_WELCOME = "Oi! Sou o tutor do fairgate. Antes de um modelo de IA aprender a decidir quem recebe crédito, este sistema audita se os dados tratam os diferentes grupos de pessoas de forma equânime (sem viés por idade, sexo etc.) — e bloqueia a base quando detecta injustiça, em vez de apenas sinalizar. Pode me perguntar qualquer coisa, por texto ou por voz, ou tocar em \"explicar esta fase\".";
   const DOCK_SUGGEST = ["O que esta fase mostra?", "Por que o gate bloqueia se o DI já passa cru?", "Por que SMOTE foi preterido?"];
 
-  function setDock(patch) {
-    const inp = root.querySelector(".fg-dock-input"); if (inp) S.dock.input = inp.value;
-    Object.assign(S.dock, patch); render();
-  }
+  // preserva o que o aluno digitou antes de um re-render (o input é não-controlado no DOM)
+  function syncDockInput() { const inp = root.querySelector(".fg-dock-input"); if (inp) S.dock.input = inp.value; }
+  function setDock(patch) { syncDockInput(); Object.assign(S.dock, patch); render(); }
   function ensureWelcome() { if (S.dock.messages.length === 0) S.dock.messages.push({ role: "assistant", content: DOCK_WELCOME }); }
   function scrollDock() { const b = root.querySelector(".fg-dock-msgs"); if (b) b.scrollTop = b.scrollHeight; }
   let _welcomedVoice = false;
@@ -234,7 +238,7 @@
     if (greet) speak(DOCK_WELCOME);                                   // fala o welcome ao abrir
   }
   function closeDock() { stopSpeak(); stopMic(); S.dock.open = false; render(); }
-  function toggleSpeak() { S.dock.speakOn = !S.dock.speakOn; if (!S.dock.speakOn) stopSpeak(); render(); }
+  function toggleSpeak() { syncDockInput(); S.dock.speakOn = !S.dock.speakOn; if (!S.dock.speakOn) stopSpeak(); render(); }
 
   async function sendDock(text) {
     const q = (text || "").trim();
@@ -272,6 +276,26 @@
     render(); scrollDock();
     const inp = root.querySelector(".fg-dock-input"); if (inp) inp.focus();
     if (S.dock.speakOn) speak(s.ask);
+  }
+  // reação formativa do tutor à auto-explicação (Lever D) — só ensina, NUNCA avalia nem toca o gate (P3).
+  // Online: reação rica do LLM (mode:"react"). Offline/sem-chave: degrada para a resposta-modelo estática
+  // (jamais finge uma reação via a tabela de 7 regex). Roda só PÓS-gate, sobre S.consol — não vê o veredito.
+  async function reactToExplanation() {
+    const c = S.consol; if (!c || !c.explainRevealed || c.reactLoading) return;
+    const text = (c.explainText || "").trim(); if (!text) return;
+    c.reactLoading = true; c.reactText = null; render();
+    const prompt = `O aprendiz escreveu, com as próprias palavras, esta explicação do fairgate ao final da trilha:\n\n"${text}"\n\nReaja de forma formativa (sólido · lacuna · uma frase que feche a lacuna).`;
+    let reaction = null;
+    try {
+      const r = await fetch("/api/tutor", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }], station: "7 · Consolidação", mode: "react" }) });
+      if (r.ok) { const d = await r.json(); if (d.source === "llm" && d.answer) reaction = d.answer; } // só reação VIVA do LLM
+    } catch (e) { /* offline → degrada honestamente abaixo */ }
+    c.reactLoading = false;
+    c.reactText = reaction || "Offline agora — sem reação ao vivo. Compare sua explicação com a resposta-modelo acima: onde elas divergem é exatamente o que vale reler.";
+    render();
+    const fr = root.querySelector(".fg-explain-react"); if (fr) fr.focus();   // devolve o foco à reação (a11y)
+    if (reaction && S.dock.speakOn) speak(reaction);
   }
 
   // ---- voz (porte de use-speak): TTS de servidor (/api/tts) + fallback do navegador ----
@@ -368,6 +392,7 @@
   function toggleMic() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
+    syncDockInput();
     if (S.dock.listening) { stopMic(); render(); return; }
     const rec = new SR(); rec.lang = "pt-BR"; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
     let finalText = "";
@@ -417,6 +442,7 @@
       case "dockSuggest": sendDock(el.getAttribute("data-q") || ""); break;
       case "socratic": socraticStation(n); break;
       case "revealModel": { const ta = root.querySelector(".fg-explain-input"); if (S.consol) { S.consol.explainText = ta ? ta.value : ""; S.consol.explainRevealed = true; } render(); break; }
+      case "reactExplain": reactToExplanation(); break;
       case "toggleSpeak": toggleSpeak(); break;
       case "toggleMic": toggleMic(); break;
       case "dockStop": stopSpeak(); render(); break;
@@ -1042,7 +1068,11 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="font-size:12.5px; color:rgba(14, 31, 48,.72); margin-top:6px; font-weight:300; line-height:1.4;">${m.pedTitle}</div>
         <div style="font-size:11.5px; color:rgba(14, 31, 48,.72); margin-top:7px; line-height:1.5; font-weight:300;"><span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:#5B7691;">OBJETIVO</span><br>${m.objective}</div>
         <button class="fg-btn fg-btn-sm ${done ? "fg-btn-applied" : ""}" data-act="openCheck" data-n="${m.n}" style="margin-top:11px; width:100%;">${done ? "✓ check respondido · rever" : "Responder o check ▸"}</button>
-        ${m.n === 7 ? `<button class="fg-consol-cta ${S.learnCert ? "done" : ""}" data-act="openConsol" style="margin-top:9px;" title="Prova de consolidação — o gate de aprendizado, espelho do gate de dados">${S.learnCert ? "✓ aprendizado_consolidado · rever" : "Prova de consolidação · gate de aprendizado ▸"}</button>` : ""}
+        ${m.n === 7 ? (S.learnCert
+          ? `<button class="fg-consol-cta done" data-act="openConsol" style="margin-top:9px;" title="Rever o gate de aprendizado">✓ aprendizado_consolidado · rever</button>`
+          : S.completed.size === 7
+            ? `<button class="fg-consol-cta" data-act="openConsol" style="margin-top:9px;" title="Prova de consolidação — o gate de aprendizado, espelho do gate de dados">Prova de consolidação · gate de aprendizado ▸</button>`
+            : `<button class="fg-consol-cta" disabled style="margin-top:9px; opacity:.55; cursor:not-allowed;" title="Responda os 7 checks formativos para destravar — a escalada de calibração precisa das 7 estações"><svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0; vertical-align:-2px; margin-right:6px;'><rect x='4' y='11' width='16' height='10' rx='2'/><path d='M8 11V7a4 4 0 0 1 8 0v4'/></svg>Responda os 7 checks (${S.completed.size}/7) p/ destravar</button>`) : ""}
         <button class="fg-foot-tutor" data-act="explain" data-n="${m.n}" style="width:100%; margin-top:11px; justify-content:center;" title="O tutor explica esta fase (por voz)"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>O Tutor Explica</span></button>
         ${T.SOCRATIC[m.n] ? `<button class="fg-socratic-cta" data-act="socratic" data-n="${m.n}" style="width:100%; margin-top:8px;" title="O tutor te faz uma pergunta e dá pistas — não a resposta (formativo · nunca toca o veredito)"><svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12' y2='17'/><circle cx='12' cy='12' r='10'/></svg><span>Topa um desafio?</span></button>` : ""}
       </div>
@@ -1149,10 +1179,40 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
       </div>
     </div>`;
   }
+  // A ESCALADA — proveniência do APRENDIZADO (espelho da proveniência do DADO no dataset_aprovado).
+  // Lê APENAS S.calib (confiança×acerto já coletado em closeCheck) — leitura pura, nunca toca o veredito (P3).
+  // Fecha o espelho dado↔aprendizado: o mesmo tipo de gráfico (Pareto justiça×acurácia da estação 7) aplicado
+  // à própria calibração do aprendiz ao subir a escala Bloom (Entender→Criar).
+  function fgEscalada(calib, stations) {
+    const RANK = { Lembrar: 1, Entender: 2, Aplicar: 3, Analisar: 4, Avaliar: 5, Criar: 6 };
+    const cellColor = (c) => {
+      if (!c) return { bg: "rgba(14,31,48,.05)", bd: "rgba(14,31,48,.14)", mk: "·", fg: "#50657A" };
+      if (c.correct && c.conf === "alta") return { bg: "#14B8A6", bd: "#0F9486", mk: "✓", fg: "#06231f" };
+      if (c.correct) return { bg: "rgba(20,184,166,.2)", bd: "rgba(20,184,166,.5)", mk: "✓", fg: "#0B5F56" };
+      if (c.conf === "alta") return { bg: "rgba(185,111,54,.22)", bd: "#B96F36", mk: "★", fg: "#7A4A1E" };
+      return { bg: "rgba(224,114,107,.16)", bd: "rgba(224,114,107,.5)", mk: "✕", fg: "#A23F39" };
+    };
+    const cells = stations.map((m) => {
+      const c = calib[m.n], s = cellColor(c);
+      const tip = c ? `Estação ${m.n} · ${m.bloom} — ${c.correct ? "acertou" : "errou"}, confiança ${c.conf}` : `Estação ${m.n} · ${m.bloom} — não respondida`;
+      return `<div class="fg-esc-cell" title="${escHtml(tip)}" style="background:${s.bg}; border-color:${s.bd}; color:${s.fg};"><span class="fg-esc-mk">${s.mk}</span><span class="fg-esc-bloom">${m.bloom}</span></div>`;
+    }).join("");
+    const ans = stations.filter((m) => calib[m.n]);
+    const hiHit = ans.filter((m) => calib[m.n].correct && calib[m.n].conf === "alta").length;
+    const hiErr = ans.filter((m) => !calib[m.n].correct && calib[m.n].conf === "alta").length;
+    const bloomMax = ans.filter((m) => calib[m.n].correct).reduce((mx, m) => ((RANK[m.bloom] || 0) > (RANK[mx] || 0) ? m.bloom : mx), "—");
+    return `<div class="fg-escalada" role="img" aria-label="A sua escalada de calibração nas 7 estações, de Entender a Criar: cobertura ${ans.length} de 7, ${hiHit} acerto(s) de alta confiança, ${hiErr} erro(s) de alta confiança corrigido(s) por hipercorreção, nível Bloom máximo com acerto ${bloomMax}.">
+      <div class="mono fg-esc-eyebrow">A SUA ESCALADA · CALIBRAÇÃO × ACERTO (ENTENDER → CRIAR)</div>
+      <div class="fg-esc-row" aria-hidden="true">${cells}</div>
+      <div class="mono fg-esc-prov">proveniência do aprendizado · cobertura <b>${ans.length}/7</b> · <b>${hiHit}</b> acerto(s) de alta confiança · <b>${hiErr}</b> erro(s) de alta confiança${hiErr ? ` <span style="color:#B96F36;">★ corrigido(s)</span>` : ""} · Bloom máx <b>${bloomMax}</b></div>
+      ${hiErr ? `<div class="fg-esc-legend">★ erro de alta confiança = onde a hipercorreção mais fixa o aprendizado (Butterfield &amp; Metcalfe, 2001)</div>` : ""}
+    </div>`;
+  }
+
   // carta de auto-explicação (produção · auto-explicação · ilusão de profundidade explicativa).
   // OPCIONAL, pós-gate 7/7, sessão-only, NUNCA avaliada — só autocomparação com resposta-modelo estática.
   function selfExplainCard(c) {
-    const esc = (x) => (x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const esc = escHtml;
     const C = T.CONSOLIDATION;
     if (!c.explainRevealed) {
       return `<div class="fg-explain">
@@ -1166,11 +1226,16 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
       </div>`;
     }
     const mine = esc(c.explainText || "").trim();
+    const reactUI = !mine ? ""
+      : c.reactText ? `<div class="fg-explain-react" role="status" aria-live="polite" tabindex="-1"><div class="mono" style="font-size:8px; letter-spacing:.1em; color:#0F9486;">REAÇÃO DO TUTOR · FORMATIVA · NÃO AVALIA (P3)</div><div style="font-size:12px; line-height:1.55; color:rgba(14,31,48,.82); margin-top:4px; font-weight:300;">${esc(c.reactText).replace(/\n/g, "<br>")}</div></div>`
+      : c.reactLoading ? `<div class="fg-explain-react" role="status" aria-live="polite" aria-busy="true" tabindex="-1"><span class="sr-only">O tutor está reagindo…</span><div class="fg-bub fg-typing" style="display:inline-flex;" aria-hidden="true"><span></span><span></span><span></span></div></div>`
+      : `<button class="fg-socratic-cta" data-act="reactExplain" style="width:100%; margin-top:11px;" title="O tutor reage à sua explicação — aponta o sólido e a lacuna, nunca dá nota"><svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>Pedir reação do tutor (online)</span></button>`;
     return `<div class="fg-explain">
       <div class="mono" style="font-size:9px; letter-spacing:.13em; color:#0F9486;">SUA EXPLICAÇÃO × A RESPOSTA-MODELO · COMPARE</div>
       ${mine ? `<div class="fg-explain-mine"><div class="mono" style="font-size:8px; letter-spacing:.1em; color:#5B7691;">VOCÊ ESCREVEU</div><div style="font-size:12px; line-height:1.5; color:rgba(14,31,48,.82); margin-top:4px; font-weight:300;">${mine}</div></div>` : ""}
       <div class="fg-explain-model"><div class="mono" style="font-size:8px; letter-spacing:.1em; color:#0F9486;">RESPOSTA-MODELO</div><div style="font-size:12px; line-height:1.55; color:rgba(14,31,48,.8); margin-top:4px; font-weight:300;">${C.modelAnswer}</div></div>
       <div style="font-size:11px; color:#5B7691; margin-top:9px; font-weight:300;">Onde sua explicação tinha buracos? Esses pontos são os que mais valem reler — a surpresa fixa a correção.</div>
+      ${reactUI}
     </div>`;
   }
   function consolVerdict() {
@@ -1188,6 +1253,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
             <div style="font-size:13.5px; line-height:1.55; color:rgba(14,31,48,.76); margin-top:16px; font-weight:300;">Você cruzou as 7 estações por <strong style="color:#0F9486; font-weight:500;">retrieval cumulativo</strong> e acertou ${hits}/${C.total}. Este gate trata o <strong style="color:#0E1F30; font-weight:500;">seu aprendizado</strong> como o fairgate trata o dado: não se declara consolidado sem prova — o espelho exato do <em class="mono" style="font-size:12px;">dataset_aprovado</em>.</div>
             <div class="mono" style="font-size:10px; letter-spacing:.04em; color:#5B7691; margin-top:14px; padding-top:13px; border-top:1px solid rgba(14,31,48,.1);">proveniência · retrieval ${hits}/${C.total} · calibração: ${highConf} de alta confiança · policy v${P.version} <span style="color:#0F9486;">#${policyHash}</span></div>
             <div style="font-size:11px; line-height:1.5; color:rgba(14,31,48,.6); margin-top:11px; font-weight:300;">Gate de maestria + tutor 1:1 — a <strong style="font-weight:500;">estrutura</strong> que a pesquisa de tutoria (Bloom 1984; VanLehn 2011; Kestin 2024) associa aos maiores ganhos de aprendizado.</div>
+            ${fgEscalada(S.calib, T.STATIONS)}
             ${selfExplainCard(c)}
             <div style="display:flex; gap:10px; margin-top:16px;">
               <button class="fg-btn fg-btn-sm no-print" data-act="closeConsol">Fechar ✓</button>
@@ -1213,7 +1279,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
   // ── dock UI (rodapé, abrível a qualquer momento) ──────────────────────────
   function dockUI() {
     const d = S.dock;
-    const esc = (x) => (x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const esc = escHtml;
     if (!d.open) {
       return "";   // launcher do tutor vive no rodapé (footer) — ver footer()
     }
@@ -1243,7 +1309,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
           <button class="fg-dock-btn" data-act="closeDock" title="Fechar" aria-label="Fechar o tutor">✕</button>
         </div>
       </div>
-      <div class="fg-dock-msgs">${msgs}${d.loading ? `<div class="fg-msg bot"><div class="fg-bub fg-typing"><span></span><span></span><span></span></div></div>` : ""}</div>
+      <div class="fg-dock-msgs">${msgs}${d.loading ? `<div class="fg-msg bot" role="status" aria-live="polite" aria-busy="true"><span class="sr-only">O tutor está respondendo…</span><div class="fg-bub fg-typing" aria-hidden="true"><span></span><span></span><span></span></div></div>` : ""}</div>
       ${sugg}
       <div class="fg-dock-input-row">
         ${micOn ? `<button class="fg-dock-btn mic ${d.listening ? "on" : ""}" data-act="toggleMic" title="${d.listening ? "Ouvindo…" : "Falar pelo microfone"}" aria-label="Falar pelo microfone">${d.listening ? "●" : "<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><rect x='9' y='2' width='6' height='12' rx='3'/><path d='M5 10a7 7 0 0 0 14 0'/><line x1='12' y1='19' x2='12' y2='22'/></svg>"}</button>` : ""}

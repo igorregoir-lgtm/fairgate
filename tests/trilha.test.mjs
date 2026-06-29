@@ -97,12 +97,29 @@ test("P3 (caminho do tutor ⟂ gate): a via socrática NUNCA muta o veredito (le
   const slice = (fnName) => {
     const i = src.indexOf("function " + fnName);
     assert.ok(i >= 0, `função ${fnName} existe`);
-    const j = src.indexOf("\n  function ", i + 1);
-    return src.slice(i, j === -1 ? i + 1200 : j);
+    const after = src.slice(i);
+    const end = after.indexOf("\n  }");   // fecha no `}` da própria função (exclui comentários seguintes)
+    return after.slice(0, end === -1 ? 1200 : end);
   };
   const socratic = slice("socraticStation");
   assert.ok(!/learnCert|S\.consol|\.passed|results\.push/.test(socratic), "socraticStation não toca o estado do gate");
   // sendDock pode ler S.step, mas a ramificação socrática não pode escrever no gate de aprendizado
   const sendDock = slice("sendDock");
   assert.ok(!/learnCert|\.passed|results\.push/.test(sendDock), "sendDock não muta o gate de aprendizado");
+  // reação formativa do tutor (Lever D): ensina, mas NUNCA toca o veredito
+  const react = slice("reactToExplanation");
+  assert.ok(!/learnCert|\.passed|results\.push/.test(react), "reactToExplanation não muta o gate de aprendizado");
+  assert.ok(/d\.source\s*===\s*"llm"/.test(react), "reação só aceita LLM vivo (offline nunca finge reação — anti verde-falso)");
+  // a escalada (proveniência do aprendizado) é LEITURA PURA de S.calib — não pode mutar o gate
+  const escalada = slice("fgEscalada");
+  assert.ok(!/learnCert|\.passed|results\.push/.test(escalada), "fgEscalada é leitura pura — não muta o gate");
+});
+
+test("SEGURANÇA: esc de HTML unificado escapa aspas (anti-injeção no atributo value=)", () => {
+  const src = readFileSync(join(ROOT, "app.js"), "utf8");
+  const m = src.match(/const escHtml = .*/);
+  assert.ok(m, "escHtml existe");
+  for (const ent of ["&amp;", "&lt;", "&gt;", "&quot;", "&#39;"]) assert.ok(m[0].includes(ent), `escHtml escapa ${ent}`);
+  // nenhum esc parcial (só & e <) pode restar — o sink em value="${esc(...)}" dependia disso
+  assert.ok(!/replace\(\/&\/g, "&amp;"\)\.replace\(\/<\/g, "&lt;"\);/.test(src), "sem esc parcial remanescente (só & e <)");
 });

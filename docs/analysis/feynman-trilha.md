@@ -173,3 +173,26 @@ distrator da questão de consolidação); qualquer copy de **+2σ / ganho medido
 de **tutoria** (maestria d≈0,67 já presente; ITS≈tutor humano), e o ganho god-mode é **ativar o tutor
 existente como multiplicador** (socrático), não inventar pedagogia nova. Tudo invariante-seguro e com
 fonte citável.
+
+---
+
+## 7. Loop god-mode — reação formativa (D) + auditoria adversarial + a escalada
+
+**Lever D (reação formativa do tutor).** A resposta a "se a LLM não corrige, quem corrige?": o tutor
+**reage** (ensina), nunca **avalia**. Carta de auto-explicação → "Pedir reação do tutor" → online o LLM
+reage (sólido · lacuna · fechamento, `mode:"react"`); offline degrada para a resposta-modelo. P3 intacto
+(teste-slice prova que `reactToExplanation` não toca o veredito).
+
+**Auditoria adversarial god-mode (5 lentes + síntese).** Veredito: tier **Tesla (7,8/10)** — o efeito
+"what the hell" já presente e **provado por teste**, mas o **espelho dado↔aprendizado geometricamente
+incompleto**: `S.calib` (mapa confiança×acerto dos 7 checks) era coletado e **descartado**. Punch-list de
+9 defeitos corrigidos: esc HTML unificado (anti-injeção em `value=`), a11y da reação (`role=status`/foco),
+`aria-busy`/sr-only no typing, gate da CTA de consolidação por 7/7 checks (P4 na porta), race do `gateTimer`,
+preservação de input ao alternar voz/mic, e alinhamento ADR.
+
+**A jogada para god-mode — "A Escalada" (ADR-017).** Renderizar `S.calib` no certificado: faixa de 7
+células na escala Bloom (Entender→Criar), cor por calibração (acerto-confiante=teal; **erro de alta
+confiança=âmbar ★**; não-respondida=cinza), + 3 métricas-espelho das 3 métricas de DQ do dado (cobertura,
+calibração, Bloom máx). O aprendiz vê **o mesmo tipo de gráfico** da Fronteira de Pareto (justiça×acurácia)
+aplicado a si — a arbitragem dado↔aprendizado vira **mesma estrutura visual**. Leitura pura, sessão-only,
+P3 (teste-slice). É o passo que faz o artefato **produzir** o efeito, não só explicá-lo.
