@@ -82,7 +82,19 @@
 
   // ── transições de estado ──────────────────────────────────────────────────
   function set(patch) { Object.assign(S, patch); render(); }
-  function go(n) { if (n <= S.maxStep) set({ step: n }); }
+  // canal único de anúncio p/ leitor de tela — vive FORA de #fg-root (sobrevive ao innerHTML do render).
+  // Usado p/ resultados assíncronos/transições que o SR não pegaria numa região recriada (veredito, estação, Pareto).
+  function announce(msg) {
+    let el = document.getElementById("fg-live");
+    if (!el) { el = document.createElement("div"); el.id = "fg-live"; el.className = "sr-only"; el.setAttribute("role", "status"); el.setAttribute("aria-live", "polite"); document.body.appendChild(el); }
+    el.textContent = String(msg || "");
+  }
+  function go(n) {
+    if (n > S.maxStep) return;
+    set({ step: n });
+    const c = root.querySelector("#fg-conteudo"); if (c) c.focus();   // teclado/SR: leva o foco ao novo conteúdo
+    const m = T.get(n); if (m) announce(`Estação ${n} de 7: ${m.name}. Nível ${m.bloom}.`);
+  }
   let gateTimer = null;
   function runGate() {
     if (S.gate === "running") return;
@@ -97,6 +109,7 @@
       S.verdict = v;
       S.maxStep = Math.max(S.maxStep, ok ? 7 : 5);
       render();
+      announce(ok ? "Gate aprovado: dataset liberado para treino." : `Gate bloqueado: ${v.failures.length} violação(ões) de qualidade ou justiça no dataset.`);
     }, 1150);
   }
   function applyImpute() { set({ imputed: true, gate: "idle", verdict: null }); }
@@ -423,7 +436,7 @@
       case "runGate": runGate(); break;
       case "impute": applyImpute(); break;
       case "reweigh": if (S.imputed) applyReweigh(); break;
-      case "setLambda": set({ lambdaIdx: i }); break;
+      case "setLambda": { set({ lambdaIdx: i }); const tp = tradeoffData && tradeoffData.points[i]; if (tp) announce(`Ponto ${i + 1}: gap ${pp(tp.br_gap)} p.p., AUC ${tp.auc.toFixed(3)} — ${tp.gatePass ? "passa o gate" : "ainda reprova"}.`); break; }
       case "primary": primaryAction(); break;
       case "source": switchSource(el.getAttribute("data-src")); break;
       case "openCheck": openCheck(n); break;
@@ -1057,7 +1070,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
     // instrução (scaffolding decrescente) — adaptativa à fonte na estação do gate
     let guidance = m.instruction;
     if (m.n === 4 && S.source === "synthetic") {
-      guidance = "Rode o gate no modo sintético-estresse: aqui o NA é proxy forte de idade e a sonda aprende NA→bad. O DI da sonda despenca e o gate de fairness (L2) reprova de forma dramática — o mesmo gate, outro dado. É o contraste que prova que fairness depende do dado, não de um número fixo.";
+      guidance = "Rode o gate no modo sintético-estresse (PRNG semeado): é outro dataset, e o gate continua bloqueando pelos MESMOS pilares — cobertura do jovem, NA como proxy de idade e gap de taxa-base — não por um único DI. O mesmo gate, outro dado: o contraste prova que fairness é propriedade do dado, medida em vários eixos, e que o gate não está \"decorado\" para uma base específica.";
     }
     const guideBlock = `<div style="background:rgba(20,184,166,.06); border:1px solid rgba(20,184,166,.2); border-radius:8px; padding:11px 13px;">
       <div class="mono" style="font-size:8.5px; letter-spacing:.13em; color:#0F9486;">COMO FAZER${S.tour ? " · TOUR" : ""}</div>

@@ -111,7 +111,7 @@ window.FAIRGATE_TRILHA = (function () {
       instruction:
         "Rode o gate. Ele treina um modelo-sonda determinístico (LogReg, seed 42) e mede paridade. Repare numa verdade incômoda do dado real: o DI da sonda já passa cru (0,97) — porque a sonda exclui sexo e idade. A injustiça não está num único número de DI; está na representação e nos rótulos. O gate bloqueia mesmo assim.",
       deepen:
-        "Troque os Dados para \"sintético-estresse\": ali o NA é proxy forte de idade e a sonda aprende NA→bad — o DI despenca e o gate de fairness reprova de forma dramática. É o mesmo gate; o que muda é o dado.",
+        "Troque os Dados para \"sintético-estresse\" (PRNG semeado): é outro dataset, e o gate continua bloqueando pelos MESMOS pilares de qualidade — cobertura do jovem, NA como proxy de idade, e gap de taxa-base — não por um único DI. O mesmo gate, outro dado: a lição é que fairness é propriedade do dado, medida em vários eixos, e o gate não está \"decorado\" para uma base específica.",
       check: {
         prompt: "No dado real, o DI da sonda já passa cru (0,97). Por que, então, o gate ainda bloqueia?",
         options: [

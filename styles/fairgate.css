@@ -433,6 +433,13 @@ button { font-family: var(--fg-font-mono); }
   .fg-stations { max-height: 220px; }
   .fg-row { flex-direction: column; }
 }
+/* foco visível nos pontos do Pareto (outline não pinta em <circle> SVG — usar stroke) */
+circle[data-act="setLambda"]:focus-visible,
+circle[data-act="setLambda"]:focus { outline: none; stroke: #0E1F30; stroke-width: 3; }
+/* header não estoura em telas estreitas: o bloco de controles ocupa a linha inteira e quebra dentro dela */
+@media (max-width: 560px) { .fg-top-right { flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; width: 100%; max-width: 100%; } }
+/* tabelas largas rolam horizontalmente em telas estreitas em vez de comprimir/cortar */
+@media (max-width: 560px) { .fg-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; } }
 
 /* ── keyframes ─────────────────────────────────────────────────────────── */
 @keyframes fgFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
