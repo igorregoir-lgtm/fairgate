@@ -82,3 +82,21 @@ muted #8A9AAB → #67788A / #6B7E90). **Trade-off aceito:** alguns *eyebrows*/r�
 a informação essencial nunca depende só desses rótulos.
 **Consequência.** Operável por teclado e leitor de tela; legibilidade do conteúdo lido em AA; integridade
 da marca preservada. Residual documentado aqui (não é descuido).
+
+## ADR-010 — Tutor com voz (porte do Vitaliza) · dock no rodapé
+**Contexto.** O produto-irmão Vitaliza tem um tutor conversacional com **voz** (TTS ElevenLabs + Google +
+fallback do navegador) e microfone. Pedido: trazer a mesma funcionalidade ao fairgate, com voz **nativa pt-BR**
+(não robotizada) e um tutor sempre acessível.
+**Decisão.** Porte sem deps para a stack standalone: `api/tts.js` (1 função serverless) replica o `lib/tts` do
+Vitaliza — ordem `TTS_PROVIDER`→fallback→navegador, normalização de fala, status. **Voz primária = Google
+`pt-BR-Chirp3-HD-Charon`** (masculina, **nativa pt-BR**, a mais natural do Google; service-account JWT→OAuth).
+ElevenLabs (`eleven_multilingual_v2` + voz nativa BR) fica **cabeado** como fallback (requer chave válida; a do
+Vitaliza expirou). Navegador (`SpeechSynthesis` pt-BR) é a degradação que **sempre** funciona. Entrada por voz via
+`SpeechRecognition` pt-BR. UI = **dock no rodapé** (FAB → painel conversacional), abrível a qualquer momento, com
+"explicar esta fase" por estação. O tutor é conversacional (histórico de mensagens).
+**Invariante P3 (confirmado em revisão):** o tutor (texto e voz) **só ensina** — não tem acesso ao motor nem ao
+estado do gate; o caminho do veredito e o do tutor são disjuntos.
+**Segurança.** Segredos só em env var no servidor; `api/tts.js` com rate-limit por IP, cap de input, Content-Type
+validado, sanitização de BOM. ⚠️ Os segredos do Vitaliza (Google SA, ElevenLabs, DeepSeek, OpenRouter, Supabase)
+foram expostos em chat — **devem ser rotacionados**.
+**Consequência.** Voz humana pt-BR ao vivo (Google) + tutor onipresente; funciona offline (voz do navegador).

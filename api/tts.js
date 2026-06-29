@@ -119,6 +119,16 @@ function status() {
     providers, anyConfigured, serverVoiceAvailable: ttsEnabled() && anyConfigured };
 }
 
+// rate-limit best-effort por IP (TTS custa por chamada — endpoint público)
+const _rl = new Map();
+function rateLimited(ip) {
+  const now = Date.now(), win = 60000, max = 20;
+  const arr = (_rl.get(ip) || []).filter((t) => now - t < win);
+  arr.push(now); _rl.set(ip, arr);
+  if (_rl.size > 5000) _rl.clear();
+  return arr.length > max;
+}
+
 function readBody(req) {
   return new Promise((resolve) => {
     if (req.body) { if (typeof req.body === "string") { try { return resolve(JSON.parse(req.body)); } catch { return resolve({}); } } return resolve(req.body); }
@@ -132,6 +142,10 @@ function readBody(req) {
 module.exports = async (req, res) => {
   if (req.method === "GET") { res.setHeader("Content-Type", "application/json; charset=utf-8"); res.setHeader("Cache-Control", "no-store"); return res.end(JSON.stringify(status())); }
   if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ error: "use GET/POST" })); }
+  const ct = (req.headers["content-type"] || "").split(";")[0].trim();
+  if (ct && ct !== "application/json") { res.statusCode = 415; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ error: "Content-Type deve ser application/json" })); }
+  const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "anon";
+  if (rateLimited(ip)) { res.statusCode = 429; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ error: "muitas requisições de voz — tente em instantes" })); }
 
   const body = await readBody(req);
   const raw = typeof body.text === "string" ? body.text : "";

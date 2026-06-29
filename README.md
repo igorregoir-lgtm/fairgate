@@ -12,8 +12,10 @@
 - **L1 · Console (JS)** — a tela interativa "wow" (`index.html` + `app.js` + `fairgate-engine.js`), abre offline.
 - **L2 · Evidência (Python/Marimo)** — `notebook/fairgate.py`: EDA + contrato Pandera + gate + mitigação sobre o
   CSV real, como **prova formal**. `notebook/crosscheck.py` prova que **L1 e L2 não divergem** (bit-idêntico).
-- **L3 · Tutor LLM** — `api/tutor.js` (serverless): DeepSeek **ao vivo** (chave só em env var no servidor) →
-  fallback determinístico no servidor → tutor offline determinístico no cliente. **Só ensina — nunca toca o veredito (P3).**
+- **L3 · Tutor com voz** — **dock conversacional no rodapé**, abrível a qualquer momento: chat por **texto e voz**,
+  **microfone** (`SpeechRecognition` pt-BR) e **"explicar esta fase"**. `api/tutor.js` (DeepSeek, conversacional) +
+  `api/tts.js` (voz humana pt-BR: **Google `Chirp3-HD-Charon`** masculina nativa · ElevenLabs · voz do navegador como
+  fallback). Chaves só em env var no servidor. **Só ensina — nunca toca o veredito (P3).** Detalhes: [`docs/VOICE.md`](docs/VOICE.md).
 
 > **Fonte única (P6):** `policy.yaml` + `german_credit_data.csv` governam L1 **e** L2. Nenhum número diverge.
 
@@ -73,7 +75,9 @@ fairgate-engine.js      # motor determinístico, sem deps (reusado do handoff + 
 policy.yaml             # FONTE ÚNICA dos limites (P6) — governa L1 e L2
 data/german-credit.js   # 1.000 linhas reais embutidas (geradas do CSV)
 data/policy.js          # policy.yaml -> window.FAIRGATE_POLICY (gerado)
-api/tutor.js            # L3 — endpoint serverless do tutor (DeepSeek server-side + fallback)
+api/tutor.js            # L3 — tutor conversacional (DeepSeek server-side + fallback)
+api/tts.js              # L3 — voz pt-BR (Google Chirp3-HD-Charon · ElevenLabs · normalização de fala)
+slides/                 # deck graded (3 slides, printável) — Plano de Melhoria de DQ
 trilha/missions.js      # 7 estações: Bloom + objetivo + scaffolding + check (fonte única)
 styles/fairgate.css     # console (tokens allla)
 styles/tokens/*.css     # design system allla (colors/fonts/typography/spacing)
