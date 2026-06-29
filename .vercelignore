@@ -1,0 +1,11 @@
+# dev / referência — não publicar
+_handoff_ref/
+tests/
+scripts/
+.claude/
+.venv/
+node_modules/
+__pycache__/
+*.pptx
+*.log
+notebook/__pycache__/

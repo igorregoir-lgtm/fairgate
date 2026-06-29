@@ -1,0 +1,14 @@
+# dev / ambiente
+.venv/
+.vercel/
+node_modules/
+__pycache__/
+*.pyc
+
+# referência (não faz parte do entregável)
+_handoff_ref/
+*.pptx
+
+# SO
+.DS_Store
+Thumbs.db

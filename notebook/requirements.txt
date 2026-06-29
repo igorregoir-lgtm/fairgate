@@ -1,0 +1,11 @@
+# L2 — camada Python (evidência formal). Python 3.12.
+#   uv venv --python 3.12 .venv
+#   uv pip install --python .venv/Scripts/python.exe -r notebook/requirements.txt
+#   .venv/Scripts/python -m marimo run notebook/fairgate.py     # interativo
+#   .venv/Scripts/python notebook/crosscheck.py                  # cross-check L1 vs L2 (stdlib, sem deps)
+marimo>=0.9
+pandas>=2.2
+pandera>=0.20
+scikit-learn>=1.5
+matplotlib>=3.8
+pyyaml>=6.0

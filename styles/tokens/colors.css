@@ -1,0 +1,70 @@
+/* ============================================================
+   allla.ai — Color tokens
+   Editorial, near-monochrome navy system with a single teal accent.
+   Never pure black (#000) or pure white (#FFF).
+   Teal is energy — points of emphasis, never large fills (except the band).
+   ============================================================ */
+
+:root {
+  /* — Primary — brand, logo, links — */
+  --primary:        #1E3A5F;
+  --primary-deep:   #14283D;   /* hover, footer bg */
+
+  /* — Ink — typography & dark surfaces — */
+  --ink:            #0E1F30;   /* main text, hero/founders/closing bg */
+  --ink-soft:       #2D4663;   /* high-importance secondary text */
+
+  /* — Surface — light backgrounds — */
+  --paper:          #FAFAFA;   /* primary background (never #FFF) */
+  --paper-soft:     #F4F6F8;   /* cards, principles section bg */
+  --cloud:          #E5EBF1;   /* very subtle backgrounds */
+
+  /* — Steel — muted greys — */
+  --steel:          #5B7691;   /* tertiary text, labels, icons */
+  --steel-soft:     #8A9AAB;   /* placeholders, metadata */
+
+  /* — Rules — borders — */
+  --rule:           #D8DDE3;   /* visible borders */
+  --rule-soft:      #E8ECF0;   /* subtle borders */
+
+  /* — Accent — teal energy — */
+  --accent:         #14B8A6;   /* highlight, live indicator, links hover */
+  --accent-deep:    #0F9486;   /* accent hover, list numbers, icon stroke */
+  --accent-light:   #D0F5F1;   /* principle-card hover background */
+  --accent-glow:    rgba(20,184,166,.18);  /* radial glow on hero */
+
+  /* ——————————————————————————————————————————————————————
+     Semantic aliases — reference these in components
+     —————————————————————————————————————————————————————— */
+
+  /* Text */
+  --text-strong:    var(--ink);          /* headlines, primary copy */
+  --text-body:      var(--ink-soft);     /* sustained reading on light */
+  --text-muted:     var(--steel);        /* labels, captions, metadata */
+  --text-faint:     var(--steel-soft);   /* placeholders */
+  --text-on-dark:   rgba(255,255,255,.88);
+  --text-on-dark-soft: rgba(255,255,255,.55);
+  --text-link:      var(--primary);
+  --text-link-hover:var(--accent-deep);
+
+  /* Surfaces */
+  --surface-page:   var(--paper);
+  --surface-card:   var(--paper-soft);
+  --surface-sunken: var(--cloud);
+  --surface-dark:   var(--ink);
+  --surface-dark-2: var(--primary);
+  --surface-footer: var(--primary-deep);
+
+  /* Borders */
+  --border:         var(--rule);
+  --border-soft:    var(--rule-soft);
+  --border-on-dark: rgba(255,255,255,.12);
+
+  /* Accent roles */
+  --focus-ring:     var(--accent);
+  --selection-bg:   var(--accent);
+  --selection-fg:   #ffffff;
+}
+
+/* Global text selection — always teal on white */
+::selection { background: var(--accent); color: #fff; }

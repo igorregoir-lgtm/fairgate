@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fairgate",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve.mjs", "4178"],
+      "port": 4178
+    }
+  ]
+}

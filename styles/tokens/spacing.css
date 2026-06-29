@@ -1,0 +1,51 @@
+/* ============================================================
+   allla.ai — Spacing, layout & motion tokens
+   4px base grid. Editorial layout: generous section rhythm,
+   1px rules as dividers, no rounded corners on primary elements.
+   ============================================================ */
+
+:root {
+  /* — Spacing scale (multiples of 4px) — */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* — Fluid section rhythm — */
+  --section-y:  clamp(80px, 12vw, 160px);   /* @kind spacing */
+  --band-y:     clamp(56px, 8vw, 112px);    /* @kind spacing */
+  --close-y:    clamp(96px, 14vw, 180px);   /* @kind spacing */
+
+  /* — Layout — */
+  --max:     1320px;                        /* max content width */
+  --gutter:  clamp(24px, 5vw, 64px);        /* @kind spacing */
+  --gap-2:   clamp(40px, 6vw, 100px);       /* @kind spacing */
+  --gap-founder: clamp(40px, 6vw, 96px);   /* @kind spacing */
+
+  /* — Radii — near-zero; editorial / minimalist — */
+  --radius-none: 0;
+  --radius-sm:   2px;     /* the most curvature the brand allows */
+  --radius-pill: 999px;   /* dots & pulse only */
+
+  /* — Borders — */
+  --border-w:    1px;
+
+  /* — Elevation — the brand barely uses shadow; rules > shadows.
+     Reserved soft shadow for floating UI (dialogs, toasts) only. — */
+  --shadow-none:  none;
+  --shadow-soft:  0 1px 2px rgba(14,31,48,.04);
+  --shadow-float: 0 24px 60px -20px rgba(14,31,48,.28);
+
+  /* — Motion — long, eased, editorial. No bounce. — */
+  --ease-out:   cubic-bezier(.16, 1, .3, 1);   /* @kind other */
+  --ease-soft:  ease;   /* @kind other */
+  --dur-fast:   .3s;    /* @kind other */
+  --dur-enter:  1s;     /* @kind other */
+  --z-nav:      200;    /* @kind other */
+}

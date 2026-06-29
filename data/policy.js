@@ -1,0 +1,2 @@
+/* AUTO-GERADO por scripts/build-policy.mjs a partir de policy.yaml — NÃO editar à mão. */
+window.FAIRGATE_POLICY = {"version":1,"protected_attributes":["sex","age_lt_25"],"quality":{"coverage_min":0.3,"domain_violation_max":0.05,"base_rate_gap_max":0.1},"fairness":{"disparate_impact_min":0.8,"demographic_parity_diff_max":0.1},"probe_model":{"seed":42,"test_size":0.25,"model":"logistic_regression"}};

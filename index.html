@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fairgate · Console do Operador — allla · Data Engineering</title>
+  <meta name="description" content="Data contract executável que bloqueia o treino enviesado. German Credit · gate de fairness determinístico. allla · intelligence applied.">
+  <link rel="stylesheet" href="styles/tokens/fonts.css">
+  <link rel="stylesheet" href="styles/tokens/colors.css">
+  <link rel="stylesheet" href="styles/tokens/typography.css">
+  <link rel="stylesheet" href="styles/tokens/spacing.css">
+  <link rel="stylesheet" href="styles/fairgate.css">
+</head>
+<body>
+  <div id="fg-root">
+    <!-- estado de carregamento (substituído pelo app) -->
+    <div class="fg-app">
+      <div class="fg-loading" role="status" aria-label="Carregando o gate de fairness">
+        <div class="fg-spinner" aria-hidden="true"></div>
+        <div class="mono" style="font-size:10px; letter-spacing:.22em; color:#7C91A5;">CARREGANDO O GATE…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ordem importa: dados → política → motor → pedagogia → app. Globais (sem módulos) p/ rodar em file:// -->
+  <script src="data/german-credit.js"></script>
+  <script src="data/policy.js"></script>
+  <script src="fairgate-engine.js"></script>
+  <script src="trilha/missions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

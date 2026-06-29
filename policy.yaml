@@ -1,0 +1,26 @@
+# policy.yaml — fonte ÚNICA de verdade dos limites do gate (P6).
+# Governa L1 (console JS, via data/policy.js gerado) E L2 (notebook Marimo, leitura direta).
+# Afrouxar qualquer limite é decisão humana registrada (PR + assinatura do Fairness Steward) — P4.
+version: 1
+
+# atributos protegidos derivados na ingestão (FR-1)
+protected_attributes:
+  - sex
+  - age_lt_25
+
+# limites de Data Quality (FR-2) — rubrica 25%
+quality:
+  coverage_min: 0.30          # cobertura efetiva mínima por subgrupo (P5: completude representacional)
+  domain_violation_max: 0.05  # fração máx. de células fora de domínio / NA not_known (consistência)
+  base_rate_gap_max: 0.10     # gap máx. de taxa-base "bad" entre subgrupos (precisão + equidade)
+
+# limites de fairness do gate (FR-4)
+fairness:
+  disparate_impact_min: 0.80          # regra dos 80% (EUA) — escolha normativa de Risco/Jurídico
+  demographic_parity_diff_max: 0.10   # diferença de paridade demográfica máxima
+
+# sonda determinística (FR-4 · ADR-004 · P3)
+probe_model:
+  seed: 42
+  test_size: 0.25
+  model: logistic_regression
