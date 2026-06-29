@@ -21,7 +21,7 @@
     ready: false, step: 1, maxStep: 4,
     gate: "idle", imputed: false, reweighed: false, verdict: null,
     lambdaIdx: 0,
-    completed: loadProgress(), check: null, picked: null, tour: false, defShown: true,
+    completed: loadProgress(), check: null, picked: null, conf: null, calib: {}, consol: null, learnCert: false, tour: false, defShown: true,
     dock: { open: false, messages: [], loading: false, speakOn: false, listening: false, ttsLoading: false, playing: false },
   };
   // áudio/voz fora do estado de render (persistem entre re-renders)
@@ -106,17 +106,91 @@
     boot();
   }
 
-  // ── check formativo ───────────────────────────────────────────────────────
-  function openCheck(n) { set({ check: n, picked: null }); }
-  function pickOption(i) { if (S.picked === null) set({ picked: i }); }
+  // ── check formativo (predict-first → calibração de confiança → revelar) ─────
+  // Calibração de confiança explora o efeito de hipercorreção: erros de ALTA
+  // confiança são corrigidos mais (a surpresa metacognitiva fixa a correção) —
+  // Butterfield & Metcalfe (2001), replicado. Metacognição é o eixo central de
+  // aprendizado eficaz (Dunlosky et al., 2013 · PSPI).
+  function openCheck(n) { set({ check: n, picked: null, conf: null }); }
+  function pickOption(i) { if (S.picked === null) set({ picked: i }); }       // 1) aposta (predict-first)
+  function setConf(level) { if (S.picked !== null && S.conf === null) set({ conf: level }); } // 2) confiança → revela
   function closeCheck(advance) {
     const n = S.check;
+    const m = T.get(n);
+    const correctIdx = m ? m.check.options.findIndex((o) => o.correct) : -1;
+    S.calib[n] = { correct: S.picked === correctIdx, conf: S.conf || "media" };
     markComplete(n);
-    S.check = null; S.picked = null;
+    S.check = null; S.picked = null; S.conf = null;
     if (advance && S.tour) { const nx = n + 1; if (nx <= S.maxStep) S.step = nx; }
     render();
     const t = root.querySelector('[data-act="openCheck"]'); if (t) t.focus(); // devolve o foco (C-2)
   }
+
+  // ── quiz compartilhado (check formativo + prova de consolidação) ───────────
+  // 3 fases: predizer (aposta) → calibrar confiança → revelar (+ nota de calibração).
+  const CONF_LEVELS = [["baixa", "baixa"], ["media", "média"], ["alta", "alta"]];
+  function quizOptions(opts, picked, conf, pickAct) {
+    const revealed = picked !== null && conf !== null;
+    return opts.map((o, i) => {
+      let cls = "fg-check-opt", fb = "", mark = "○", mc = "#647D93";
+      if (picked !== null) {
+        if (revealed) {
+          if (o.correct) { cls += " correct"; mark = "✓"; mc = "#0F9486"; }
+          else if (i === picked) { cls += " wrong"; mark = "✕"; mc = "#E0726B"; }
+          else { mark = "·"; }
+          if (i === picked || o.correct) fb = `<div class="fg-check-fb">${o.feedback}</div>`;
+        } else if (i === picked) { cls += " picked"; mark = "●"; mc = "#2D4663"; }
+        else { mark = "·"; }
+      }
+      return `<button class="${cls}" ${picked === null ? `data-act="${pickAct}" data-i="${i}"` : "disabled"}>
+        <div style="display:flex; gap:9px; align-items:flex-start;"><span style="color:${mc}; font-weight:700; flex-shrink:0;">${mark}</span><span>${o.text}</span></div>
+        ${fb}
+      </button>`;
+    }).join("");
+  }
+  function confSelector(confAct) {
+    return `<div class="fg-conf" role="group" aria-label="Quão confiante você está na sua aposta?">
+      <div class="mono" style="font-size:9px; letter-spacing:.13em; color:#0F9486;">QUÃO CONFIANTE VOCÊ ESTÁ?</div>
+      <div class="fg-conf-row">${CONF_LEVELS.map(([k, lbl]) => `<button class="fg-conf-btn" data-act="${confAct}" data-level="${k}">${lbl}</button>`).join("")}</div>
+      <div style="font-size:10.5px; color:#5B7691; margin-top:8px; font-weight:300;">Comprometa-se <em>antes</em> de ver — calibrar a confiança fixa melhor a correção (a metacognição é o eixo do aprendizado eficaz).</div>
+    </div>`;
+  }
+  // efeito de hipercorreção: o erro de ALTA confiança é o que MAIS se corrige.
+  function calibNote(correct, conf) {
+    const lbl = conf === "media" ? "MÉDIA" : conf.toUpperCase();
+    let tone, bg, t;
+    if (correct) {
+      tone = "#0F9486"; bg = "rgba(20,184,166,.08)";
+      t = conf === "alta" ? "Calibrado: alta confiança e acerto. É assim que o conhecimento sólido se parece."
+        : conf === "baixa" ? "Você sabia mais do que achava — acertou com baixa confiança. Reconheça o acerto: ele conta."
+        : "Acerto com confiança média. Sólido; releia o porquê para firmar a certeza.";
+    } else if (conf === "alta") {
+      tone = "#B96F36"; bg = "rgba(185,111,54,.09)";
+      t = "Erro de ALTA confiança — e, contraintuitivamente, é o que mais se corrige: a surpresa de errar o que você dava como certo fixa a versão correta (efeito de hipercorreção · Butterfield & Metcalfe, 2001). Releia o porquê: ele tende a colar.";
+    } else {
+      tone = "#E0726B"; bg = "rgba(224,114,107,.08)";
+      t = conf === "media" ? "Erro de confiança média: você já hesitava. Resolva a dúvida relendo o porquê acima."
+        : "Erro de baixa confiança: você já desconfiava — boa calibração. Agora fixe a versão correta no porquê.";
+    }
+    return `<div class="fg-calib" style="border-color:${tone}; background:${bg};"><div class="mono" style="font-size:8.5px; letter-spacing:.13em; color:${tone};">CALIBRAÇÃO · ${lbl} CONFIANÇA</div><div style="font-size:12px; line-height:1.5; color:rgba(14,31,48,.8); margin-top:5px; font-weight:300;">${t}</div></div>`;
+  }
+
+  // ── prova de consolidação (gate de APRENDIZADO — espelho do gate de DADOS) ──
+  // Retrieval cumulativo (Dunlosky et al., 2013): só emite aprendizado_consolidado
+  // com 7/7 estações dominadas. Gate honesto: não se declara verde sem reexecução.
+  function openConsol() { S.consol = { i: 0, picked: null, conf: null, results: [], done: false, passed: false }; render(); }
+  function consolPick(i) { if (S.consol && S.consol.picked === null) { S.consol.picked = i; render(); } }
+  function consolConf(level) { if (S.consol && S.consol.picked !== null && S.consol.conf === null) { S.consol.conf = level; render(); } }
+  function consolNext() {
+    const c = S.consol; if (!c || c.picked === null || c.conf === null) return;
+    const C = T.CONSOLIDATION, q = C.questions[c.i];
+    const correctIdx = q.options.findIndex((o) => o.correct);
+    c.results.push({ id: q.id, correct: c.picked === correctIdx, conf: c.conf });
+    if (c.i + 1 < C.total) { c.i++; c.picked = null; c.conf = null; }
+    else { c.done = true; c.passed = c.results.every((r) => r.correct); if (c.passed) S.learnCert = true; }
+    render();
+  }
+  function closeConsol() { S.consol = null; render(); const t = root.querySelector('[data-act="openConsol"]'); if (t) t.focus(); }
 
   // ── tutor (3 camadas: /api/tutor LLM → fallback do servidor → offline determinístico no cliente) ──
   function tutorOffline(n, q) {
@@ -291,7 +365,10 @@
 
   // ── ações (delegação) ─────────────────────────────────────────────────────
   root.addEventListener("click", (ev) => {
-    if (S.check != null && ev.target.classList && ev.target.classList.contains("fg-modal-veil")) { closeCheck(false); return; }
+    if (ev.target.classList && ev.target.classList.contains("fg-modal-veil")) {
+      if (S.check != null) { closeCheck(false); return; }
+      if (S.consol != null) { closeConsol(); return; }
+    }
     const el = ev.target.closest("[data-act]");
     if (!el) return;
     const act = el.getAttribute("data-act");
@@ -310,8 +387,14 @@
       case "source": switchSource(el.getAttribute("data-src")); break;
       case "openCheck": openCheck(n); break;
       case "pick": pickOption(i); break;
+      case "conf": setConf(el.getAttribute("data-level")); break;
       case "closeCheck": closeCheck(false); break;
       case "closeNext": closeCheck(true); break;
+      case "openConsol": openConsol(); break;
+      case "consolPick": consolPick(i); break;
+      case "consolConf": consolConf(el.getAttribute("data-level")); break;
+      case "consolNext": consolNext(); break;
+      case "closeConsol": closeConsol(); break;
       case "tour": startTour(); break;
       case "openDock": openDock(el.getAttribute("data-q") || ""); break;
       case "closeDock": closeDock(); break;
@@ -377,8 +460,8 @@
     if (!S.ready) return;
     root.innerHTML = `<div class="fg-app">${backdrop()}${topbar()}${defBanner()}
       <div class="fg-body">${railLeft()}${stage()}${railRight()}</div>
-      ${footer()}${S.check != null ? checkModal() : ""}${dockUI()}</div>`;
-    if (S.check != null) { const md = root.querySelector(".fg-modal"); if (md) md.focus(); }
+      ${footer()}${S.check != null ? checkModal() : ""}${S.consol != null ? consolModal() : ""}${dockUI()}</div>`;
+    if (S.check != null || S.consol != null) { const md = root.querySelector(".fg-modal"); if (md) md.focus(); }
   }
 
   function backdrop() {
@@ -458,7 +541,7 @@
           <div class="fg-progress-track" role="progressbar" aria-valuenow="${S.maxStep}" aria-valuemin="0" aria-valuemax="7" aria-label="Estações destravadas"><div class="fg-progress-fill" style="width:${progressW};"></div></div>
           <div class="mono" style="font-size:10px; color:#0F9486; letter-spacing:.04em;">${S.maxStep}/7</div>
         </div>
-        <div class="mono" style="font-size:9px; color:#5B7691; margin-top:8px; letter-spacing:.04em;">checks <span style="color:#0F9486; font-weight:600;">✓ ${S.completed.size}/7</span></div>
+        <div class="mono" style="font-size:9px; color:#5B7691; margin-top:8px; letter-spacing:.04em;">checks <span style="color:#0F9486; font-weight:600;">✓ ${S.completed.size}/7</span>${S.learnCert ? ` · aprendizado <span style="color:#0F9486; font-weight:600;">✓ consolidado</span>` : ""}</div>
         <button class="fg-tour-cta ${S.tour ? "on" : ""}" data-act="tour" aria-label="${S.tour ? "Continuar a trilha de aprendizado guiada" : "Iniciar a trilha de aprendizado guiada"}">
           <span class="fg-tour-ic">${S.tour
             ? "<svg width='17' height='17' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6' fill='currentColor'/></svg>"
@@ -942,6 +1025,7 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
         <div style="font-size:12.5px; color:rgba(14, 31, 48,.72); margin-top:6px; font-weight:300; line-height:1.4;">${m.pedTitle}</div>
         <div style="font-size:11.5px; color:rgba(14, 31, 48,.72); margin-top:7px; line-height:1.5; font-weight:300;"><span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:#5B7691;">OBJETIVO</span><br>${m.objective}</div>
         <button class="fg-btn fg-btn-sm ${done ? "fg-btn-applied" : ""}" data-act="openCheck" data-n="${m.n}" style="margin-top:11px; width:100%;">${done ? "✓ check respondido · rever" : "Responder o check ▸"}</button>
+        ${m.n === 7 ? `<button class="fg-consol-cta ${S.learnCert ? "done" : ""}" data-act="openConsol" style="margin-top:9px;" title="Prova de consolidação — o gate de aprendizado, espelho do gate de dados">${S.learnCert ? "✓ aprendizado_consolidado · rever" : "Prova de consolidação · gate de aprendizado ▸"}</button>` : ""}
         <button class="fg-foot-tutor" data-act="explain" data-n="${m.n}" style="width:100%; margin-top:11px; justify-content:center;" title="O tutor explica esta fase (por voz)"><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0'><path d='M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5Z'/></svg><span>O Tutor Explica</span></button>
       </div>
       <div class="fg-ped-list">
@@ -996,29 +1080,87 @@ Column("checking", nullable=<span style="color:#E0726B;">False</span>)
   // ── station check (quiz formativo) ────────────────────────────────────────
   function checkModal() {
     const m = T.get(S.check); if (!m) { S.check = null; return ""; }
-    const chk = m.check; const picked = S.picked;
-    const opts = chk.options.map((o, i) => {
-      let cls = "fg-check-opt", fb = "";
-      if (picked !== null) {
-        if (o.correct) cls += " correct";
-        else if (i === picked) cls += " wrong";
-        if (i === picked || o.correct) fb = `<div class="fg-check-fb">${o.feedback}</div>`;
-      }
-      return `<button class="${cls}" ${picked === null ? `data-act="pick" data-i="${i}"` : "disabled"}>
-        <div style="display:flex; gap:9px; align-items:flex-start;"><span style="color:${picked !== null && o.correct ? "#0F9486" : picked === i ? "#E0726B" : "#647D93"}; font-weight:700; flex-shrink:0;">${picked !== null ? (o.correct ? "✓" : (i === picked ? "✕" : "·")) : "○"}</span><span>${o.text}</span></div>
-        ${fb}
-      </button>`;
-    }).join("");
-    const answered = picked !== null;
+    const chk = m.check; const picked = S.picked, conf = S.conf;
+    const phase = picked === null ? "predict" : (conf === null ? "confidence" : "reveal");
+    const isCorrect = picked === chk.options.findIndex((o) => o.correct);
+    const sub = phase === "predict" ? "Preveja antes de ver (predict-first): qual a sua aposta?"
+      : phase === "confidence" ? "Comprometa-se com a confiança — depois eu revelo."
+      : "Veja o porquê — sem punição, o erro também ensina.";
     return `<div class="fg-modal-veil">
       <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-modal-title" tabindex="-1">
         <div class="mono" style="font-size:9.5px; letter-spacing:.16em; color:#0F9486;">CHECK FORMATIVO · ESTAÇÃO ${("0" + m.n).slice(-2)} · ${m.bloom.toUpperCase()}</div>
-        <div style="font-size:11px; color:#5B7691; margin-top:6px; font-weight:300;">${answered ? "Veja o porquê — sem punição, o erro também ensina." : "Preveja antes de ver (predict-first): qual a sua aposta?"}</div>
+        <div style="font-size:11px; color:#5B7691; margin-top:6px; font-weight:300;">${sub}</div>
         <h2 id="fg-modal-title" class="fr" style="font-weight:300; font-size:21px; line-height:1.25; color:#0E1F30; margin:12px 0 14px;">${chk.prompt}</h2>
-        ${opts}
+        ${quizOptions(chk.options, picked, conf, "pick")}
+        ${phase === "confidence" ? confSelector("conf") : ""}
+        ${phase === "reveal" ? calibNote(isCorrect, conf) : ""}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px;">
-          <button class="fg-btn-ghost" data-act="closeCheck">${answered ? "Fechar" : "Pular"}</button>
-          ${answered ? `<button class="fg-btn fg-btn-sm" data-act="${S.tour ? "closeNext" : "closeCheck"}">${S.tour ? "Concluir e seguir ▸" : "Concluir estação ✓"}</button>` : ""}
+          <button class="fg-btn-ghost" data-act="closeCheck">${phase === "reveal" ? "Fechar" : "Pular"}</button>
+          ${phase === "reveal" ? `<button class="fg-btn fg-btn-sm" data-act="${S.tour ? "closeNext" : "closeCheck"}">${S.tour ? "Concluir e seguir ▸" : "Concluir estação ✓"}</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── prova de consolidação (modal — o gate de aprendizado) ─────────────────
+  function consolModal() {
+    const c = S.consol, C = T.CONSOLIDATION;
+    if (c.done) return consolVerdict();
+    const q = C.questions[c.i];
+    const phase = c.picked === null ? "predict" : (c.conf === null ? "confidence" : "reveal");
+    const isCorrect = c.picked === q.options.findIndex((o) => o.correct);
+    const sub = phase === "predict" ? "Retrieval cumulativo: responda sem voltar às estações. Qual a sua aposta?"
+      : phase === "confidence" ? "Comprometa-se com a confiança antes de revelar."
+      : "Veja o porquê — e a calibração da sua aposta.";
+    return `<div class="fg-modal-veil">
+      <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-consol-title" tabindex="-1">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="mono" style="font-size:9.5px; letter-spacing:.16em; color:#0F9486;">PROVA DE CONSOLIDAÇÃO · GATE DE APRENDIZADO</div>
+          <div class="mono" style="font-size:9.5px; color:#5B7691;">${("0" + (c.i + 1)).slice(-2)} / ${("0" + C.total).slice(-2)}</div>
+        </div>
+        <div class="fg-consol-track" aria-hidden="true">${C.questions.map((_, k) => `<span class="${k < c.i ? "done" : k === c.i ? "now" : ""}"></span>`).join("")}</div>
+        <div style="font-size:11px; color:#5B7691; margin-top:9px; font-weight:300;">${sub}</div>
+        <h2 id="fg-consol-title" class="fr" style="font-weight:300; font-size:20px; line-height:1.25; color:#0E1F30; margin:11px 0 13px;">${q.prompt}</h2>
+        ${quizOptions(q.options, c.picked, c.conf, "consolPick")}
+        ${phase === "confidence" ? confSelector("consolConf") : ""}
+        ${phase === "reveal" ? calibNote(isCorrect, c.conf) : ""}
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px;">
+          <button class="fg-btn-ghost" data-act="closeConsol">Sair da prova</button>
+          ${phase === "reveal" ? `<button class="fg-btn fg-btn-sm" data-act="consolNext">${c.i + 1 < C.total ? "Próxima questão ▸" : "Ver veredito do gate ▸"}</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }
+  function consolVerdict() {
+    const c = S.consol, C = T.CONSOLIDATION;
+    const hits = c.results.filter((r) => r.correct).length;
+    const highConf = c.results.filter((r) => r.correct && r.conf === "alta").length;
+    if (c.passed) {
+      return `<div class="fg-modal-veil">
+        <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-consol-title" tabindex="-1">
+          <div class="fg-cert" style="animation:fgSlam .55s var(--fg-ease);">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:52px; height:52px; border-radius:50%; background:#14B8A6; display:flex; align-items:center; justify-content:center; font-size:27px; color:#0E1F30; flex-shrink:0;">✓</div>
+              <div><div class="mono" style="font-size:10px; letter-spacing:.16em; color:#0F9486;">ARTEFATO EMITIDO</div><div id="fg-consol-title" class="fr" style="font-size:27px; color:#0E1F30; line-height:1.1; margin-top:3px;">aprendizado_consolidado</div></div>
+            </div>
+            <div style="font-size:13.5px; line-height:1.55; color:rgba(14,31,48,.76); margin-top:16px; font-weight:300;">Você cruzou as 7 estações por <strong style="color:#0F9486; font-weight:500;">retrieval cumulativo</strong> e acertou ${hits}/${C.total}. Este gate trata o <strong style="color:#0E1F30; font-weight:500;">seu aprendizado</strong> como o fairgate trata o dado: não se declara consolidado sem prova — o espelho exato do <em class="mono" style="font-size:12px;">dataset_aprovado</em>.</div>
+            <div class="mono" style="font-size:10px; letter-spacing:.04em; color:#5B7691; margin-top:14px; padding-top:13px; border-top:1px solid rgba(14,31,48,.1);">proveniência · retrieval ${hits}/${C.total} · calibração: ${highConf} de alta confiança · policy v${P.version} <span style="color:#0F9486;">#${policyHash}</span></div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+              <button class="fg-btn fg-btn-sm no-print" data-act="closeConsol">Fechar ✓</button>
+              <button class="fg-btn-ghost no-print" data-act="print">Imprimir certificado</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+    return `<div class="fg-modal-veil">
+      <div class="fg-modal" role="dialog" aria-modal="true" aria-labelledby="fg-consol-title" tabindex="-1">
+        <div class="mono" style="font-size:9.5px; letter-spacing:.16em; color:#E0726B;">GATE DE APRENDIZADO · BLOQUEADO</div>
+        <h2 id="fg-consol-title" class="fr" style="font-weight:300; font-size:24px; line-height:1.2; color:#0E1F30; margin:10px 0 12px;">Ainda não consolidado — ${hits}/${C.total}.</h2>
+        <div style="font-size:13px; line-height:1.6; color:rgba(14,31,48,.75); font-weight:300;">Igual ao gate de dados: <strong style="color:#0E1F30; font-weight:500;">não se declara verde sem reexecução</strong> (invariante 4). Reveja o porquê das que escaparam e refaça a prova — o artefato <em class="mono" style="font-size:12px;">aprendizado_consolidado</em> só é emitido com ${C.total}/${C.total} dominadas.</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:10px;">
+          <button class="fg-btn-ghost" data-act="closeConsol">Fechar</button>
+          <button class="fg-btn fg-btn-sm" data-act="openConsol">Refazer a prova ↺</button>
         </div>
       </div>
     </div>`;

@@ -224,9 +224,58 @@ window.FAIRGATE_TRILHA = (function () {
     },
   ];
 
+  // ── Prova de consolidação (gate de aprendizado) ───────────────────────────
+  // Retrieval CUMULATIVO interleaving as 7 estações — base evidence: prática de
+  // recuperação + espaçada = alta utilidade (Dunlosky et al. 2013, PSPI). É um GATE
+  // ESTRITO (como o de dados): todas as questões certas emitem `aprendizado_consolidado`.
+  // Re-tentar é permitido (formativo) — a própria re-recuperação é o aprendizado.
+  const CONSOLIDATION = {
+    title: "Prova de consolidação",
+    sub: "3 questões que cruzam as 7 estações. Acertar todas emite o artefato aprendizado_consolidado — o gate de aprendizado, espelho do gate de dados.",
+    questions: [
+      {
+        id: "origem",
+        prompt: "Onde nasce o viés que o fairgate bloqueia no German Credit?",
+        options: [
+          { text: "No dado: o rótulo histórico (gap de taxa-base de 12,8 p.p.) e a sub-representação do jovem<25 (~15%). O modelo só amplificaria.", correct: true,
+            feedback: "Exato — viés é defeito do dado, não do modelo (estações 1–2). É por isso que o gate age na ingestão, antes de treinar." },
+          { text: "No algoritmo de treino: é um defeito do modelo, corrigível com mais épocas ou regularização.", correct: false,
+            feedback: "Não. O gap de 12,8 p.p. e a sub-representação já existem no dado cru — nenhum ajuste de treino apaga uma desigualdade que está no rótulo." },
+          { text: "Na métrica escolhida: qualquer modelo é neutro se a acurácia agregada for alta.", correct: false,
+            feedback: "Cuidado: a acurácia agregada esconde o viés do subgrupo. O jovem com taxa pior ensina o modelo que ele é mais arriscado — invisível no número agregado." },
+        ],
+      },
+      {
+        id: "gate",
+        prompt: "O que faz do fairgate um gate (não um relatório), e qual mitigação ele aplica?",
+        options: [
+          { text: "Reprova a ingestão e bloqueia o treino (cláusula suspensiva); mitiga com o MENOR λ de reponderação Kamiran–Calders que faz o gate inteiro passar.", correct: true,
+            feedback: "Isso (estações 4–5). Bloqueia, não sugere; e escolhe a menor mitigação suficiente (P4) — não afrouxa o limite." },
+          { text: "Emite um alerta e segue o pipeline; mitiga duplicando a minoria com SMOTE até equilibrar as classes.", correct: false,
+            feedback: "Não: 'avisar e seguir' é exatamente o que o gate recusa. E SMOTE foi preterido — inflar a minoria com pontos sintéticos adiciona ruído e derruba AUC sem dado real." },
+          { text: "Recalibra o modelo já treinado; nenhuma mudança no dado é necessária.", correct: false,
+            feedback: "O fairgate age ANTES do treino, sobre o dado. Recalibrar o modelo deixa o viés entrar e só maquia a saída." },
+        ],
+      },
+      {
+        id: "auditavel",
+        prompt: "Como o fairgate mantém o veredito honesto e auditável?",
+        options: [
+          { text: "Limites versionados no policy.yaml (fonte única; L1 do console ≡ L2 do notebook); veredito determinístico com proveniência (hash da policy + seed); o ponto escolhido respeita o limite com a menor perda de acurácia.", correct: true,
+            feedback: "Perfeito (estações 3, 6, 7). Fonte única + determinismo + proveniência = veredito reproduzível e contestável — não opinião." },
+          { text: "O tutor decide o veredito caso a caso, ajustando o limite ao contexto da pergunta.", correct: false,
+            feedback: "Invariante P3: o tutor só ENSINA — nunca toca o veredito. O caminho do gate e o do tutor são disjuntos." },
+          { text: "A acurácia agregada define a aprovação; a justiça vira um relatório separado, opcional.", correct: false,
+            feedback: "Justiça é invariante de pipeline aqui, verificada ex-ante — não um anexo opcional. Acurácia alta com subgrupo prejudicado ainda reprova." },
+        ],
+      },
+    ],
+  };
+  CONSOLIDATION.total = CONSOLIDATION.questions.length;
+
   const TOTAL = STATIONS.length;
   const EST_MIN = STATIONS.reduce((s, m) => s + m.estMin, 0);
   function get(n) { return STATIONS.find((s) => s.n === n); }
 
-  return { STATIONS, TOTAL, EST_MIN, get };
+  return { STATIONS, TOTAL, EST_MIN, get, CONSOLIDATION };
 })();

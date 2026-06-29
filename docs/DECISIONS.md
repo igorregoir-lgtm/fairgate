@@ -141,3 +141,24 @@ coerente com `[[offline-local-first]]`. Scripts nomeados em `package.json` (`che
 **Consequência.** A divergência L1↔L2 (`[[conflito-de-fonte-explicito]]`) vira **invariante de pipeline**
 verificado em todo commit; o gate corta merge se a prova quebrar. Critério de pronto deste artefato (estágio
 "parceiro técnico"): a coisa difícil — o gate de fairness determinístico — roda e é provada ponta-a-ponta.
+
+## ADR-014 — Trilha Educacional god-mode: calibração de confiança + gate de aprendizado
+**Contexto.** A Trilha das 7 estações já tinha escalada Bloom, scaffolding decrescente e check **predict-first**
+(prever antes de ver). Faltava fechar o laço pedagógico com **evidência de aprendizagem** — não só consumir o
+conteúdo, mas **provar** que consolidou. A literatura de extrema reputação aponta o caminho: prática de
+**retrieval** e **testes formativos** são técnicas de **alta utilidade** (Dunlosky et al., 2013 · *PSPI*), e o
+**efeito de hipercorreção** (Butterfield & Metcalfe, 2001, replicado) mostra que erros de **alta confiança** são
+os **mais corrigidos** — a surpresa metacognitiva fixa a versão correta. A pedagogia é, ela própria, fonte única
+em `trilha/missions.js` (sem standard de pedagogia no transversal allla — este artefato é candidato a virar um).
+**Decisão.** Dois movimentos, ambos espelhando o **gate de dados** do produto. (1) **Calibração de confiança**:
+o check vira 3 fases — predizer → **declarar confiança** (baixa/média/alta) *antes* de revelar → revelar com uma
+**nota de calibração** adaptativa (erro de alta confiança recebe a nota de hipercorreção, citando a fonte). (2)
+**Gate de aprendizado**: uma **prova de consolidação** (`CONSOLIDATION` em `missions.js`) com retrieval
+**cumulativo** que cruza as 7 estações; acertar **7/7** emite o artefato **`aprendizado_consolidado`** — espelho
+exato do `dataset_aprovado`. Gate **honesto** (`[[criterio-de-pronto-e-gate-de-submissao]]`): **não se declara
+verde sem reexecução** (invariante 4) — errar bloqueia e oferece refazer. Contrato da pedagogia coberto por
+`tests/trilha.test.mjs` (escalada Bloom, checks bem-formados, consolidação bem-formada), dentro do `npm run verify`.
+**Consequência.** O artefato passa a **gatear o aprendizado do mesmo jeito que gateia o dado** — coerência
+estrutural que produz o efeito allla. CSP estrito preservado (fluxo por delegação `data-act`, zero handler inline).
+Estado de aprendizado é de **sessão** (a Trilha reinicia a cada carga, `[[offline-local-first]]`), sem persistência
+entre reloads. Custo: +1 fase no check (mais cliques) — aceito pelo ganho de fixação que a calibração entrega.
